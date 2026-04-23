@@ -68,5 +68,5 @@ DGP <- function(M=600, N=rep(1000, 5), case="homo", s=311) {
 }
 
 dat.imbal <- DGP(N = c(300, 300, 90, 1000, 150), case="diffT")
-dat.moreK <- DGP(N = c(1000, rep(200, 3), rep(300, 3), rep(1000, 2)), case="diffT")
+dat.moreK <- DGP(N = c(1000, rep(200, 3), rep(300, 3), rep(1000, 3)), case="diffT")
 save(file="obsdata_imbal.Rdata", dat.imbal, dat.moreK)
