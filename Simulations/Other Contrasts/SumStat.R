@@ -302,6 +302,3 @@ plot_rmst_heatmap(
   limits = c(0, 100),
   show_x_text = TRUE
 )
-
-## Optional: save the numerical summary used by all plots
-saveRDS(sumstat, file = "sumstat_corrected.rds")
