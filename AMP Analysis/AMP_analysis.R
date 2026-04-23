@@ -153,17 +153,11 @@ source("TrtSurvCurves.R")
 source("EIFestimates.R")
 result.SA <- TrtSurvCurves(data=dat.hiv, 
                            tgt.name="South Africa",
-                           prop.SL.library=c("SL.glm"), 
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                            n.folds=5, 
                            s=2388)
 
 result.SA.naive <- POOL_IVW(data=dat.hiv, 
                             tgt.name="South Africa",
-                            prop.SL.library=c("SL.glm"), 
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                             n.folds=5, 
                             s=2388)
 save(file="result_main_SA.Rdata", result.SA, result.SA.naive)
@@ -262,7 +256,7 @@ extend.results <- FuseSurv_Extend(eval.times=result.SA$eval.times,
                                   IF.CCOD.0=result.SA$IF.CCOD.0, 
                                   IF.CCOD.1=result.SA$IF.CCOD.1,
                                   ind.R1.ccod=result.SA$ind.R1.ccod,
-                                  s=1222)
+                                  s=2388)
 
 ## selected time points
 time.sel <- c(148, 330, 512)
@@ -397,17 +391,11 @@ xtable(df.RMST.diff, digits = c(0, 0, 0, 2, 2, 0, 3))
 ###### Other South Africa countries
 result.OA <- TrtSurvCurves(data=dat.hiv, 
                            tgt.name="African country other than South Africa",
-                           prop.SL.library=c("SL.glm"), 
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                            n.folds=5, 
-                           s=2222)
+                           s=2388)
 
 result.OA.naive <- POOL_IVW(data=dat.hiv, 
-                            tgt.name="South Africa",
-                            prop.SL.library=c("SL.glm"), 
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            tgt.name="African country other than South Africa",
                             n.folds=5, 
                             s=2388)
 
@@ -459,17 +447,11 @@ dev.off()
 ###### Brazil or Peru
 result.BP <- TrtSurvCurves(data=dat.hiv, 
                            tgt.name="Brazil or Peru",
-                           prop.SL.library=c("SL.glm"), 
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                            n.folds=5, 
-                           s=2222)
+                           s=2388)
 
 result.BP.naive <- POOL_IVW(data=dat.hiv, 
-                            tgt.name="South Africa",
-                            prop.SL.library=c("SL.glm"), 
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            tgt.name="Brazil or Peru",
                             n.folds=5, 
                             s=2388)
 
@@ -512,17 +494,11 @@ dev.off()
 ###### United States or Switzerland
 result.US <- TrtSurvCurves(data=dat.hiv, 
                            tgt.name="United States or Switzerland",
-                           prop.SL.library=c("SL.glm"), 
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                            n.folds=5, 
-                           s=2222)
+                           s=2388)
 
 result.US.naive <- POOL_IVW(data=dat.hiv, 
-                            tgt.name="South Africa",
-                            prop.SL.library=c("SL.glm"), 
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            tgt.name="United States or Switzerland",
                             n.folds=5, 
                             s=2388)
 
