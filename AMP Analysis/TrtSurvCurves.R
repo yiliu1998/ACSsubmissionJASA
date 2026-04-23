@@ -10,8 +10,8 @@ TrtSurvCurves <- function(data,
                           prop.SL.library=c("SL.glm"), 
                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
-                          n.folds=2, 
-                          s=1333) {
+                          n.folds=5, 
+                          s=1234) {
   
   site <- as.character(data[, site.var])
   tgt.name <- as.character(tgt.name)
