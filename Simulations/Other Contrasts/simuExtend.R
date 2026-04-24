@@ -1,3 +1,5 @@
+setwd('/Users/yiliu1998/Desktop/Research/FuseSurv JASA ACS')
+gc()
 library(CFsurvival)
 library(survSuperLearner)
 library(SuperLearner)

@@ -1,3 +1,5 @@
+setwd('/Users/yiliu1998/Desktop/Research/FuseSurv JASA ACS')
+gc()
 load("obsdata_main.Rdata")
 library(CFsurvival)
 library(survSuperLearner)
