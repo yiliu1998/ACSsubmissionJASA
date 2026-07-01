@@ -129,24 +129,23 @@ print(tab.calib)
 ### ----------------------------------------------------------------------------
 source("TrtSurvCurves.R")
 source("EIFestimates.R")
-### --- Results are already saved in the "results_main_SA.Rdata" file
-### --- Uncomment the below code if you want to re-run the analysis
-# result.SA <- TrtSurvCurves(data=dat.hiv,
-#                            tgt.name="South Africa",
-#                            prop.SL.library=c("SL.glm"),
-#                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            n.folds=5,
-#                            s=2388)
-# 
-# result.SA.naive <- POOL_IVW(data=dat.hiv,
-#                             tgt.name="South Africa",
-#                             prop.SL.library=c("SL.glm"),
-#                             event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             n.folds=5,
-#                             s=2388)
-# save(file="result_main_SA.Rdata", result.SA, result.SA.naive)
+
+result.SA <- TrtSurvCurves(data=dat.hiv,
+                           tgt.name="South Africa",
+                           prop.SL.library=c("SL.glm"),
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           n.folds=5,
+                           s=2388)
+
+result.SA.naive <- POOL_IVW(data=dat.hiv,
+                            tgt.name="South Africa",
+                            prop.SL.library=c("SL.glm"),
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            n.folds=5,
+                            s=2388)
+save(file="result_main_SA.Rdata", result.SA, result.SA.naive)
 
 fit_cluster_cox <- coxph(
   Surv(Y, Delta) ~ A + age + score + bweight + strata(site),
@@ -267,6 +266,7 @@ dev.off()
 ### --- Below code shows numbers in panel (A) of Figure 5
 ### --- These numbers are added in Figure 5 separately using MicroSoft PowerPoint
 load("result_main_SA.Rdata")
+### --- Below are the 6 numbers shown in the FED panel of Figure 5(A)
 result.SA$df.FED[148,3] / result.SA$df.TGT[148,3]
 result.SA$df.FED[148,5] / result.SA$df.TGT[148,5]
 result.SA$df.FED[330,3] / result.SA$df.TGT[330,3]
@@ -274,6 +274,7 @@ result.SA$df.FED[330,5] / result.SA$df.TGT[330,5]
 result.SA$df.FED[512,3] / result.SA$df.TGT[512,3]
 result.SA$df.FED[512,5] / result.SA$df.TGT[512,5]
 
+### --- Below are the 6 numbers shown in the CCOD panel of Figure 5(A)
 result.SA$df.CCOD[148,3] / result.SA$df.TGT[148,3]
 result.SA$df.CCOD[148,5] / result.SA$df.TGT[148,5]
 result.SA$df.CCOD[330,3] / result.SA$df.TGT[330,3]
@@ -281,6 +282,7 @@ result.SA$df.CCOD[330,5] / result.SA$df.TGT[330,5]
 result.SA$df.CCOD[512,3] / result.SA$df.TGT[512,3]
 result.SA$df.CCOD[512,5] / result.SA$df.TGT[512,5]
 
+### --- Below are the 6 numbers shown in the IVW panel of Figure 5(A)
 result.SA.naive$df.IVW[148,3] / result.SA$df.TGT[148,3]
 result.SA.naive$df.IVW[148,5] / result.SA$df.TGT[148,5]
 result.SA.naive$df.IVW[330,3] / result.SA$df.TGT[330,3]
@@ -288,6 +290,7 @@ result.SA.naive$df.IVW[330,5] / result.SA$df.TGT[330,5]
 result.SA.naive$df.IVW[512,3] / result.SA$df.TGT[512,3]
 result.SA.naive$df.IVW[512,5] / result.SA$df.TGT[512,5]
 
+### --- Below are the 6 numbers shown in the POOL panel of Figure 5(A)
 result.SA.naive$df.POOL[148,3] / result.SA$df.TGT[148,3]
 result.SA.naive$df.POOL[148,5] / result.SA$df.TGT[148,5]
 result.SA.naive$df.POOL[330,3] / result.SA$df.TGT[330,3]
@@ -295,13 +298,13 @@ result.SA.naive$df.POOL[330,5] / result.SA$df.TGT[330,5]
 result.SA.naive$df.POOL[512,3] / result.SA$df.TGT[512,3]
 result.SA.naive$df.POOL[512,5] / result.SA$df.TGT[512,5]
 
+### --- Below are the 6 numbers shown in the CLCOX panel of Figure 5(A)
 df.cluster[df.cluster$time==148,3] / result.SA$df.TGT[148,3]
 df.cluster[df.cluster$time==148,5] / result.SA$df.TGT[148,5]
 df.cluster[df.cluster$time==332,3] / result.SA$df.TGT[332,3]
 df.cluster[df.cluster$time==332,5] / result.SA$df.TGT[332,5]
 df.cluster[df.cluster$time==513,3] / result.SA$df.TGT[513,3]
 df.cluster[df.cluster$time==513,5] / result.SA$df.TGT[513,5]
-
 
 ### ----------------------------------------------------------------------------
 ### Reproducibility 4: Numbers in Tables 2 and 3 in Section 5.2
@@ -423,24 +426,24 @@ xtable(df.RMST.diff, digits = c(0, 0, 0, 2, 2, 0, 3))
 ### ----------------------------------------------------------------------------
 ### Reproducibility 5: Figures A.1, A.2 and A.3 in Supplement A
 ### ----------------------------------------------------------------------------
-### --- Results are already saved in the "results_main_OA.Rdata" file
-### --- Uncomment the below code if you want to re-run the analysis
-# result.OA <- TrtSurvCurves(data=dat.hiv,
-#                            tgt.name="African country other than South Africa",
-#                            prop.SL.library=c("SL.glm"),
-#                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            n.folds=5,
-#                            s=2222)
-# 
-# result.OA.naive <- POOL_IVW(data=dat.hiv,
-#                             tgt.name="South Africa",
-#                             prop.SL.library=c("SL.glm"),
-#                             event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             n.folds=5,
-#                             s=2388)
-# save(file="result_main_OA.Rdata", result.OA, result.OA.naive)
+
+### --- Run and save results of the OA region
+result.OA <- TrtSurvCurves(data=dat.hiv,
+                           tgt.name="African country other than South Africa",
+                           prop.SL.library=c("SL.glm"),
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           n.folds=5,
+                           s=2222)
+
+result.OA.naive <- POOL_IVW(data=dat.hiv,
+                            tgt.name="South Africa",
+                            prop.SL.library=c("SL.glm"),
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            n.folds=5,
+                            s=2388)
+save(file="result_main_OA.Rdata", result.OA, result.OA.naive)
 
 fit_cluster_cox <- coxph(
   Surv(Y, Delta) ~ A + age + score + bweight + strata(site),
@@ -486,24 +489,23 @@ pdf(file="AMP_OAwts.pdf", width=10, height=3.4)
 grid.arrange(p.wt.1, p.wt.0, ncol=2)
 dev.off()
 
-### --- Results are already saved in the "results_main_BP.Rdata" file
-### --- Uncomment the below code if you want to re-run the analysis
-# result.BP <- TrtSurvCurves(data=dat.hiv,
-#                            tgt.name="Brazil or Peru",
-#                            prop.SL.library=c("SL.glm"),
-#                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            n.folds=5,
-#                            s=2222)
-# 
-# result.BP.naive <- POOL_IVW(data=dat.hiv,
-#                             tgt.name="South Africa",
-#                             prop.SL.library=c("SL.glm"),
-#                             event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             n.folds=5,
-#                             s=2388)
-# save(file="result_main_BP.Rdata", result.BP, result.BP.naive)
+### --- Run and save results of the BP region
+result.BP <- TrtSurvCurves(data=dat.hiv,
+                           tgt.name="Brazil or Peru",
+                           prop.SL.library=c("SL.glm"),
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           n.folds=5,
+                           s=2222)
+
+result.BP.naive <- POOL_IVW(data=dat.hiv,
+                            tgt.name="South Africa",
+                            prop.SL.library=c("SL.glm"),
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            n.folds=5,
+                            s=2388)
+save(file="result_main_BP.Rdata", result.BP, result.BP.naive)
 
 dat <- subset(dat.hiv, site == "Brazil or Peru")
 sf_cluster <- survfit(fit_cluster_cox, newdata = dat, se.fit = TRUE)
@@ -540,24 +542,23 @@ pdf(file="AMP_BPwts.pdf", width=10, height=3.4)
 grid.arrange(p.wt.1, p.wt.0, ncol=2)
 dev.off()
 
-### --- Results are already saved in the "results_main_US.Rdata" file
-### --- Uncomment the below code if you want to re-run the analysis
-# result.US <- TrtSurvCurves(data=dat.hiv,
-#                            tgt.name="United States or Switzerland",
-#                            prop.SL.library=c("SL.glm"),
-#                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                            n.folds=5,
-#                            s=2222)
-# 
-# result.US.naive <- POOL_IVW(data=dat.hiv,
-#                             tgt.name="South Africa",
-#                             prop.SL.library=c("SL.glm"),
-#                             event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             n.folds=5,
-#                             s=2388)
-# save(file="result_main_US.Rdata", result.US, result.US.naive)
+### --- Run and save results of the US region
+result.US <- TrtSurvCurves(data=dat.hiv,
+                           tgt.name="United States or Switzerland",
+                           prop.SL.library=c("SL.glm"),
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                           n.folds=5,
+                           s=2222)
+
+result.US.naive <- POOL_IVW(data=dat.hiv,
+                            tgt.name="South Africa",
+                            prop.SL.library=c("SL.glm"),
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            n.folds=5,
+                            s=2388)
+save(file="result_main_US.Rdata", result.US, result.US.naive)
 
 dat <- subset(dat.hiv, site == "United States or Switzerland")
 sf_cluster <- survfit(fit_cluster_cox, newdata = dat, se.fit = TRUE)

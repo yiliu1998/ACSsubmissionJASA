@@ -115,23 +115,22 @@ plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) 
   return(list(p.wt.1=p.wt.1, p.wt.0=p.wt.0))
 }
 
-### --- Results are already saved in the "results_main_SA_2.Rdata" file
-### --- Uncomment the below code if you want to re-run the analysis
-# result.SA <- TrtSurvCurves(data=dat.hiv,
-#                            covar.name=c("age","bweight"),
-#                            tgt.name="South Africa",
-#                            n.folds=5,
-#                            s=2388)
-# 
-# result.SA.naive <- POOL_IVW(data=dat.hiv,
-#                             covar.name=c("age","bweight"),
-#                             tgt.name="South Africa",
-#                             prop.SL.library=c("SL.glm"),
-#                             event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-#                             n.folds=5,
-#                             s=2388)
-# save(file="result_main_SA_2.Rdata", result.SA, result.SA.naive)
+### --- Run and save the results
+result.SA <- TrtSurvCurves(data=dat.hiv,
+                           covar.name=c("age","bweight"),
+                           tgt.name="South Africa",
+                           n.folds=5,
+                           s=2388)
+
+result.SA.naive <- POOL_IVW(data=dat.hiv,
+                            covar.name=c("age","bweight"),
+                            tgt.name="South Africa",
+                            prop.SL.library=c("SL.glm"),
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
+                            n.folds=5,
+                            s=2388)
+save(file="result_main_SA_2.Rdata", result.SA, result.SA.naive)
 
 fit_cluster_cox <- coxph(
   Surv(Y, Delta) ~ A + age + bweight + strata(site),
