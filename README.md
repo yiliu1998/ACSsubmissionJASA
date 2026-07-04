@@ -46,7 +46,7 @@ This script reproduces:
 
 ### Reproducing Figure E.1 (True Survival Curves)
 
-Please run `surv_plots_E1.R` to get the true treatment-specific survival curves in simulations. This typically takes less than 2 minutes to finish. 
+Please run `surv_plots_E1.R` to get the true treatment-specific survival curves in simulations (**Figure E.1** reported in Web Appendix E.1). This typically takes less than 2 minutes to finish. 
 
 ### Reproducing Figures E.2–E.13 (Simulations for Survival Curves)
 
