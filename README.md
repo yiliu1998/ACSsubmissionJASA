@@ -1,5 +1,17 @@
 # R Code Repository for "Targeted Data Fusion for Region-Specific Survival Effects in the AMP HIV Prevention Trials"
 
+## Data Analysis Results (Main Text Section 5 and Web Appendix A)
+
+## Simulation Study Results (Web Appendix E)
+
+### Reproducing Figure E.1 (True Survival Curves)
+
+Please run `surv_plots_E1.R` to get the true treatment-specific survival curves in simulations. 
+
+### Reproducing Figures E.2–E.13 (Simulations for Survival Curves)
+
+
+
 ### Reproducing Figures E.14–E.16 (Additional Causal Contrasts)
 
 We provide the intermediate `.RData` files so that reviewers can directly reproduce the summary statistics and figures without rerunning the simulations. To reproduce these results, set your working path to `Results E.5` folder, and simply run `SumStat.R` file. 
