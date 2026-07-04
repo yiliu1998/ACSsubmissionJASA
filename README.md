@@ -2,6 +2,12 @@
 
 ## Data Analysis Results (Main Text Sections 2 \& 5 and Web Appendix A)
 
+Reviewer can reproduce the data analysis results using the code in the `AMP Analysis` folder of this repository. We recommend downloading this folder to your local machine and setting it as the R working directory before running the scripts.
+
+**Before running any R code, please copy the `amp_survival.csv` data file (uploaded separately through the journal's submission system) into this folder. To comply with the data use agreement, please do not distribute, copy, or upload the CSV file outside the reproducibility review process.**
+
+
+
 ## Simulation Study Results (Web Appendix E)
 
 ### Reproducing Figure E.1 (True Survival Curves)
