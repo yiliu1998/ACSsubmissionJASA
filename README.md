@@ -1,4 +1,4 @@
-# R Code Repository for ``Targeted Data Fusion for Region-Specific Survival Effects in the AMP HIV Prevention Trials''
+# R Code Repository for "Targeted Data Fusion for Region-Specific Survival Effects in the AMP HIV Prevention Trials"
 
 ### Reproducing Figures E.14--E.16 (Additional Causal Contrasts)
 
