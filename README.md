@@ -1,5 +1,27 @@
 # R Code Repository for "Targeted Data Fusion for Region-Specific Survival Effects in the AMP HIV Prevention Trials"
 
+### R package requirements
+
+The analysis was conducted in R. The following R packages are required:
+
+```r
+install.packages(c(
+  "devtools", "dplyr", "ggplot2", "gridExtra", "SuperLearner",
+  "glmnet", "caret", "tidyr", "xtable", "survival", "survminer",
+  "EValue", "cobalt", "randomForestSRC", "cowplot",
+  "doParallel", "foreach", "RColorBrewer"
+))
+```
+
+Two required packages should be installed from GitHub:
+
+```r
+devtools::install_github("tedwestling/CFsurvival")
+devtools::install_github("tedwestling/survSuperLearner")
+```
+
+The main required packages were extracted from the reproducibility scripts, including the AMP analysis scripts and simulation scripts.
+
 ## Data Analysis Results (Main Text Sections 2 \& 5 and Web Appendix A)
 
 ## AMP Data Analysis
