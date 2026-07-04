@@ -19,11 +19,11 @@ To reproduce the simulation results for treatment-specific survival functions (O
 | Figures E.8--E.10 ($n_k=1000$) | `bias_l2.pdf`, `relbias_l2.pdf`, `rrmse_l2.pdf`, `cp_l2.pdf`, `ciw_l2.pdf` |
 | Figures E.11--E.13 (Limited overlap) | `bias_limO.pdf`, `relbias_limO.pdf`, `rrmse_limO.pdf`, `cp_limO.pdf`, `ciw_limO.pdf` |
 
+If the reviewer wishes to run simulations from the beginning, please open the `simuTrtSurv.R` file to generate data and run results. This may take in total more than 2 days to finish on a typical local computer device. Please also check the comments in this R file to make sure all required packages are installed and loaded, and if the parallel computation can be conducted in your device. 
+
 ### Reproducing Figures E.14–E.16 (Additional Causal Contrasts)
 
 We provide the intermediate `.RData` files so that reviewers can directly reproduce the summary statistics and figures without rerunning the simulations. To reproduce these results, set your working path to `Results E.5` folder, and simply run `SumStat.R` file. 
-
-All required `.RData` files have already been prepared and are included in this repository. However, the reviewer can also run simulation study from the beginning. Please open the `simuExtend.R` file to check more details and run simulations. 
 
 The script `SumStat.R` generates the following PDF files, corresponding to figures in our manuscript:
 
@@ -32,3 +32,5 @@ The script `SumStat.R` generates the following PDF files, corresponding to figur
 | Figure E.14 (Risk Difference) | `relbias_RD.pdf`, `rrmse_RD.pdf`, `cp_RD.pdf` |
 | Figure E.15 (Survival Ratio) | `relbias_SR.pdf`, `rrmse_SR.pdf`, `cp_SR.pdf` |
 | Figure E.16 (Restricted Mean Survival Time) | `relbias_RMST.pdf`, `rrmse_RMST.pdf`, `cp_RMST.pdf` |
+
+However, the reviewer can also run simulation study from the beginning. Please open the `simuExtend.R` file to check more details and run simulations. Please also check the comments in this R file to make sure all required packages are installed and loaded, and if the parallel computation can be conducted in your device.
