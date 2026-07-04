@@ -1,7 +1,8 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for AMP Data Analysis: Part III
-### --- This file reproduces Figures 3 and 4 in the main text
+### --- This file reproduces Figures 3 and 4 in Section 5
 ### ----------------------------------------------------------------------------
+### --- R packages
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
@@ -18,28 +19,23 @@ library(randomForestSRC)
 library(cowplot)
 
 dat <- read.csv("amp_survival.csv")
-
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
-
 X <- data.frame(
   bweight = dat$bweight,
   score   = dat$standardized_risk_score,
   age     = dat$bbmi
 )
-
 site <- dat$country
 site[site == "South Africa"] <- "SA"
 site[site %in% c("Tanzania, Mozambique, Kenya", "Zimbabwe", "Botswana", "Malawi")] <- "OA"
 site[site %in% c("Peru", "Brazil")] <- "BP"
 site[site %in% c("United States", "Switzerland")] <- "US"
-
 site <- factor(
   site,
   levels = c("SA", "OA", "BP", "US")
 )
-
 dat.hiv <- data.frame(
   A = A,
   Y = Y,
@@ -49,17 +45,10 @@ dat.hiv <- data.frame(
   age = X$age,
   site = site
 )
-
 bal.vars <- c("age", "score", "bweight")
 X.ps <- dat.hiv[, bal.vars, drop = FALSE]
 tgt.name <- "SA"
-
-site.cols <- c(
-  "SA" = "#E41A1C",
-  "OA" = "#377EB8",
-  "BP" = "#4DAF4A",
-  "US" = "#984EA3"
-)
+site.cols <- c("SA" = "#E41A1C", "OA" = "#377EB8", "BP" = "#4DAF4A", "US" = "#984EA3")
 
 make_ate_wt <- function(ps, A, eps = 0.01) {
   ps <- pmin(pmax(ps, eps), 1 - eps)
@@ -262,24 +251,12 @@ p.ps.hist.site <- ggplot(ps.site.long, aes(x = PS, fill = A)) +
     legend.text = element_text(size = 8)
   )
 
-pdf("AMP_pslove.pdf", height = 3, width = 10)
-grid.arrange(
-  p.all, p.ps.hist.site,
-  ncol = 2,
-  widths = c(1,2)
-)
-dev.off()
-
 fit.times <- 1:601
 t.check   <- 600
 t.ind     <- match(t.check, fit.times)
 n.folds   <- 5
-
-dat.use <- dat.hiv %>%
-  mutate(id = 1:n())
-
+dat.use <- dat.hiv %>% mutate(id = 1:n())
 dat0 <- dat.use %>% filter(site == tgt.name)
-
 surv.fit.0.tgt <- survSuperLearner(
   time = dat0$Y[dat0$A == 0],
   event = dat0$Delta[dat0$A == 0],
@@ -300,7 +277,6 @@ surv.fit.1.tgt <- survSuperLearner(
 
 set.seed(12345)
 nuis.list <- list()
-
 folds.tgt <- createFolds(1:nrow(dat0), k = n.folds, list = TRUE)
 
 for (i in seq_along(folds.tgt)) {
@@ -403,7 +379,6 @@ for (s in source.sites) {
 }
 
 nuis.df <- bind_rows(nuis.list)
-
 nuis.summary <- nuis.df %>%
   group_by(site) %>%
   summarise(
@@ -419,7 +394,6 @@ nuis.summary <- nuis.df %>%
     omega_max = max(omega, na.rm = TRUE),
     omega_q99 = quantile(omega, 0.99, na.rm = TRUE)
   )
-
 print(nuis.summary)
 
 surv.A0 <- ggplot(nuis.df, aes(x = S0_end, fill = site)) +
@@ -504,103 +478,50 @@ cens.A1 <- ggplot(nuis.df, aes(x = G1_end, fill = site)) +
     fill = "Site"
   ) +
   theme_bw() +
-  theme(
-    plot.title = element_text(size = 10, hjust = 0.5),
-    # legend.position = "none",
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
-  )
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8))
 
-omega.df <- nuis.df %>%
-  filter(site != tgt.name)
-
+omega.df <- nuis.df %>% filter(site != tgt.name)
 p.omega <- ggplot(omega.df, aes(x = omega, fill = site)) +
-  geom_histogram(
-    bins = 30,
-    alpha = 0.60,
-    color = "black",
-    linewidth = 0.25,
-    position = "identity"
-  ) +
+  geom_histogram(bins = 30, alpha = 0.60, color = "black",
+    linewidth = 0.25, position = "identity") +
   facet_wrap(~ site, ncol = 1, scales = "free_y") +
   scale_fill_manual(values = site.cols[names(site.cols) != tgt.name]) +
-  labs(
-    title = "Individual density ratio estimates",
-    x = "Estimated density ratio",
-    y = "Count",
-    fill = "Site"
-  ) +
+  labs(title = "Individual density ratio estimates",
+       x = "Estimated density ratio", y = "Count", fill = "Site") +
   theme_bw() +
-  theme(
-    plot.title = element_text(size = 10, hjust = 0.5),
-    legend.position = "bottom",
-    strip.background = element_rect(color = "black", fill = "white"),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
-  )
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        legend.position = "bottom",
+        strip.background = element_rect(color = "black", fill = "white"),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8))
 
-legend.df <- data.frame(
-  x = 1:4,
-  y = 1,
-  site = factor(c("SA", "OA", "BP", "US"), levels = c("SA", "OA", "BP", "US"))
-)
+legend.df <- data.frame(x = 1:4, y = 1, 
+                        site = factor(c("SA", "OA", "BP", "US"), 
+                                      levels = c("SA", "OA", "BP", "US")))
 
 p.legend <- ggplot(legend.df, aes(x = x, y = y, fill = site)) +
   geom_col() +
-  scale_fill_manual(
-    values = site.cols,
-    breaks = c("SA", "OA", "BP", "US"),
-    labels = c("SA", "OA", "BP", "US"),
-    name = "Region"
-  ) +
+  scale_fill_manual(values = site.cols, breaks = c("SA", "OA", "BP", "US"),
+    labels = c("SA", "OA", "BP", "US"), name = "Region") +
   theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 9)
-  )
-
+  theme(legend.position = "bottom", 
+        legend.title = element_text(size = 9), 
+        legend.text = element_text(size = 9))
 legend.shared <- cowplot::get_legend(p.legend)
-
 p.omega.noleg <- p.omega + theme(legend.position = "none")
 
-panel.A <- plot_grid(
-  surv.A0, surv.A1,
-  ncol = 1,
-  labels = c("A", ""),
-  label_size = 13,
-  rel_heights = c(1, 1)
-)
+panel.A <- plot_grid(surv.A0, surv.A1, ncol = 1, labels = c("A", ""), label_size = 13, rel_heights = c(1, 1))
+panel.B <- plot_grid(cens.A0, cens.A1, ncol = 1, labels = c("B", ""), label_size = 13, rel_heights = c(1, 1))
+panel.C <- plot_grid(p.omega.noleg, ncol = 1, labels = c("C"), label_size = 13)
+p.nuis <- plot_grid(panel.A, panel.B, panel.C, nrow = 1, rel_widths = c(0.8, 1, 0.65), align = "h")
+p.nuis.final <- plot_grid(p.nuis, legend.shared, ncol = 1, rel_heights = c(1, 0.08))
 
-panel.B <- plot_grid(
-  cens.A0, cens.A1,
-  ncol = 1,
-  labels = c("B", ""),
-  label_size = 13,
-  rel_heights = c(1, 1)
-)
+### --- Output Figure 3 in Section 5
+pdf("AMP_pslove.pdf", height = 3, width = 10)
+grid.arrange(p.all, p.ps.hist.site, ncol = 2, widths = c(1,2))
+dev.off()
 
-panel.C <- plot_grid(
-  p.omega.noleg,
-  ncol = 1,
-  labels = c("C"),
-  label_size = 13
-)
-
-p.nuis <- plot_grid(
-  panel.A, panel.B, panel.C,
-  nrow = 1,
-  rel_widths = c(0.8, 1, 0.65),
-  align = "h"
-)
-
-p.nuis.final <- plot_grid(
-  p.nuis,
-  legend.shared,
-  ncol = 1,
-  rel_heights = c(1, 0.08)
-)
-
-print(p.nuis.final)
-
+### --- Output Figure 4 in Section 5
 pdf("AMP_SComega.pdf", width = 10, height = 3.5)
 print(p.nuis.final)
 dev.off()

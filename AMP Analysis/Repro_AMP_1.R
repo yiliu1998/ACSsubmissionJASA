@@ -2,8 +2,10 @@
 ### Reproducibility for AMP Data Analysis: Part I
 ### --- This file reproduces Tables 1, and 3 in the main text,
 ### --- Figures 1 and 5 in the main text and Figures A.1, A.2 and A.3 in Online
-### --- Supplemental Material
+### --- Supplemental Material A
 ### ----------------------------------------------------------------------------
+
+### --- Packages and data pre-processing
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
@@ -19,24 +21,20 @@ library(survminer)
 library(EValue)
 
 dat <- read.csv("amp_survival.csv")
-
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
-
 X <- data.frame(
   bweight = dat$bweight,
   score   = dat$standardized_risk_score,
   age     = dat$bbmi
 )
-
 site <- dat$country
 site[site%in%c("Tanzania, Mozambique, Kenya", "Zimbabwe", "Botswana", "Malawi")] <- "African country other than South Africa"
 site[site%in%c("Peru", "Brazil")] <- "Brazil or Peru"
 site[site%in%c("United States", "Switzerland")] <- "United States or Switzerland"
 site <- factor(site, levels=c("South Africa", "African country other than South Africa", "Brazil or Peru", "United States or Switzerland"))
 unique(site)
-
 dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
 
 ### ----------------------------------------------------------------------------
@@ -264,7 +262,7 @@ grid.arrange(p.wt.SA1, p.wt.SA0, ncol=2)
 dev.off()
 
 ### --- Below code shows numbers in panel (A) of Figure 5
-### --- These numbers are added in Figure 5 separately using MicroSoft PowerPoint
+### --- These numbers are manually added in Figure 5 separately using Microsoft PowerPoint
 load("result_main_SA.Rdata")
 ### --- Below are the 6 numbers shown in the FED panel of Figure 5(A)
 result.SA$df.FED[148,3] / result.SA$df.TGT[148,3]
@@ -309,29 +307,38 @@ df.cluster[df.cluster$time==513,5] / result.SA$df.TGT[513,5]
 ### ----------------------------------------------------------------------------
 ### Reproducibility 4: Numbers in Tables 2 and 3 in Section 5.2
 ### ----------------------------------------------------------------------------
+### --- Run results
 source("Extends.R")
 load("result_main_SA.Rdata")
-extend.results <- FuseSurv_Extend(eval.times=result.SA$eval.times,
-                                  site=result.SA$site,
-                                  IF.00=result.SA$IF.00,
-                                  IF.01=result.SA$IF.01,
-                                  S.00=result.SA$S.00, 
-                                  S.01=result.SA$S.01,
-                                  Aug.00.mean=result.SA$Aug.00.mean, 
-                                  Aug.01.mean=result.SA$Aug.01.mean,
-                                  Aug.R0.mean=result.SA$Aug.R0.mean, 
-                                  Aug.R1.mean=result.SA$Aug.R1.mean,
-                                  Aug.R0.mean.sour=result.SA$Aug.R0.mean.sour, 
-                                  Aug.R1.mean.sour=result.SA$Aug.R1.mean.sour,
-                                  IF.R0=result.SA$IF.R0, 
-                                  IF.R1=result.SA$IF.R1, 
-                                  IF.CCOD.0=result.SA$IF.CCOD.0, 
-                                  IF.CCOD.1=result.SA$IF.CCOD.1,
-                                  ind.R1.ccod=result.SA$ind.R1.ccod,
-                                  s=1222)
+extend.results <- NULL
+zz <- file(tempfile(), open = "wt")
+sink(zz, type = "message")
+invisible(capture.output({
+  extend.results <- suppressWarnings(suppressMessages(
+    FuseSurv_Extend(eval.times=result.SA$eval.times,
+                    site=result.SA$site,
+                    IF.00=result.SA$IF.00,
+                    IF.01=result.SA$IF.01,
+                    S.00=result.SA$S.00, 
+                    S.01=result.SA$S.01,
+                    Aug.00.mean=result.SA$Aug.00.mean, 
+                    Aug.01.mean=result.SA$Aug.01.mean,
+                    Aug.R0.mean=result.SA$Aug.R0.mean, 
+                    Aug.R1.mean=result.SA$Aug.R1.mean,
+                    Aug.R0.mean.sour=result.SA$Aug.R0.mean.sour, 
+                    Aug.R1.mean.sour=result.SA$Aug.R1.mean.sour,
+                    IF.R0=result.SA$IF.R0, 
+                    IF.R1=result.SA$IF.R1, 
+                    IF.CCOD.0=result.SA$IF.CCOD.0, 
+                    IF.CCOD.1=result.SA$IF.CCOD.1,
+                    ind.R1.ccod=result.SA$ind.R1.ccod,
+                    s=1222)
+  ))
+}, type = "output"))
+sink(type = "message")
+close(zz)
 
 time.sel <- c(148, 330, 512)
-
 df.RD.TGT  <- extend.results$df.RD.TGT [extend.results$df.RD.TGT$time %in% time.sel, ]
 df.RD.FED  <- extend.results$df.RD.FED [extend.results$df.RD.FED$time %in% time.sel, ]
 df.RD.CCOD <- extend.results$df.RD.CCOD[extend.results$df.RD.CCOD$time %in% time.sel, ]
@@ -364,69 +371,81 @@ extend.results$df.RMST.diff.TGT$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.d
 extend.results$df.RMST.diff.FED$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.FED$RMST  / extend.results$df.RMST.diff.FED$sd))
 extend.results$df.RMST.diff.CCOD$pval <- 2 * pnorm(-abs(extend.results$df.RMST.diff.CCOD$RMST / extend.results$df.RMST.diff.CCOD$sd))
 
-add_CI <- function(df, est_col, sd_col, digits_ci = 3, digits_p = 3) {
-  df$lower <- df[[est_col]] - 1.96 * df[[sd_col]]
-  df$upper <- df[[est_col]] + 1.96 * df[[sd_col]]
-  df$CI <- sprintf(paste0("%.", digits_ci, "f, %.", digits_ci, "f"), df$lower, df$upper)
-  df$CI <- paste0("(", df$CI, ")")
-  df$pval <- round(df$pval, digits_p)
-  df
+fmt_num <- function(x, digits) sprintf(paste0("%.", digits, "f"), x)
+fmt_ci <- function(est, se, digits) paste0("(", fmt_num(est - 1.96 * se, digits), ", ", fmt_num(est + 1.96 * se, digits), ")")
+fmt_p <- function(p) sprintf("%.3f", p)
+
+make_rd_sr_rows <- function(rd.list, sr.list, time.sel=c(148,330,512)) {
+  methods <- c("TGT", "FED", "CCOD")
+  out <- lapply(seq_along(time.sel), function(i) {
+    day <- time.sel[i]
+    do.call(rbind, lapply(methods, function(m) {
+      rd <- rd.list[[m]][rd.list[[m]]$time == day, ]
+      sr <- sr.list[[m]][sr.list[[m]]$time == day, ]
+      data.frame(
+        Day = day, Method = m,
+        `RD Est. (95% CI)` = paste0(fmt_num(rd$RD, 3), " ", fmt_ci(rd$RD, rd$sd, 3)),
+        `SE(RD)` = fmt_num(rd$sd, 3),
+        `p-value_RD` = fmt_p(rd$pval),
+        `SR Est. (95% CI)` = paste0(fmt_num(sr$SR, 3), " ", fmt_ci(sr$SR, sr$sd, 3)),
+        `SE(SR)` = fmt_num(sr$sd, 3),
+        `p-value_SR` = fmt_p(sr$pval),
+        check.names = FALSE
+      )
+    }))
+  })
+  do.call(rbind, out)
 }
 
-### --- Below code are for risk difference (RD) results in Table 2 by methods
-### --- Note that Table 2 is re-organized manually by day and then method
-df.RD <- rbind(
-  cbind(Method = "TGT",  add_CI(df.RD.TGT,  "RD", "sd", digits_ci = 3, digits_p = 3)),
-  cbind(Method = "FED",  add_CI(df.RD.FED,  "RD", "sd", digits_ci = 3, digits_p = 3)),
-  cbind(Method = "CCOD", add_CI(df.RD.CCOD, "RD", "sd", digits_ci = 3, digits_p = 3))
-)[, c("Method", "time", "RD", "sd", "CI", "pval")]
-xtable(df.RD, digits = c(0, 0, 0, 3, 3, 0, 3))
+tab.RD.SR <- make_rd_sr_rows(
+  rd.list = list(TGT=df.RD.TGT, FED=df.RD.FED, CCOD=df.RD.CCOD),
+  sr.list = list(TGT=df.SR.TGT, FED=df.SR.FED, CCOD=df.SR.CCOD),
+  time.sel = time.sel
+)
 
-### --- Below code are for survival ratio (SR) results in Table 2 by methods
-### --- Note that Table 2 is re-organized manually by day and then method
-df.SR <- rbind(
-  cbind(Method = "TGT",  add_CI(df.SR.TGT,  "SR", "sd", digits_ci = 3, digits_p = 3)),
-  cbind(Method = "FED",  add_CI(df.SR.FED,  "SR", "sd", digits_ci = 3, digits_p = 3)),
-  cbind(Method = "CCOD", add_CI(df.SR.CCOD, "SR", "sd", digits_ci = 3, digits_p = 3))
-)[, c("Method", "time", "SR", "sd", "CI", "pval")]
-xtable(df.SR, digits = c(0, 0, 0, 3, 3, 0, 3))
-
-add_CI <- function(df, est_col, sd_col, digits_ci = 2, digits_p = 3) {
-  df$lower <- df[[est_col]] - 1.96 * df[[sd_col]]
-  df$upper <- df[[est_col]] + 1.96 * df[[sd_col]]
-  df$CI <- sprintf(paste0("%.", digits_ci, "f, %.", digits_ci, "f"), df$lower, df$upper)
-  df$CI <- paste0("(", df$CI, ")")
-  df$pval <- round(df$pval, digits_p)
-  df
+make_rmst_rows <- function(df0.list, df1.list, dfdiff.list) {
+  methods <- c("TGT", "FED", "CCOD")
+  bind_block <- function(label, dfs, show_p=FALSE) {
+    do.call(rbind, lapply(methods, function(m) {
+      df <- dfs[[m]]
+      data.frame(
+        Group = label, Method = m,
+        `RMST Est.` = fmt_num(df$RMST, 2),
+        SE = fmt_num(df$sd, 2),
+        `95% CI` = fmt_ci(df$RMST, df$sd, 2),
+        `p-value` = if (show_p) fmt_p(df$pval) else "--",
+        check.names = FALSE
+      )
+    }))
+  }
+  rbind(
+    bind_block("Control group", df0.list, show_p=FALSE),
+    bind_block("Treated group", df1.list, show_p=FALSE),
+    bind_block("RMST difference", dfdiff.list, show_p=TRUE)
+  )
 }
 
-### --- Below code are RMST results in Table 3
-df.RMST.0 <- rbind(
-  data.frame(Method = "TGT",  add_CI(extend.results$df.RMST.0.TGT,   "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "FED",  add_CI(extend.results$df.RMST.0.FED,   "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "CCOD", add_CI(extend.results$df.RMST.0.CCOD,  "RMST", "sd", digits_ci = 2, digits_p = 3))
-)[, c("Method", "time.max", "RMST", "sd", "CI", "pval")]
-xtable(df.RMST.0, digits = c(0, 0, 0, 2, 2, 0, 3))
+tab.RMST <- make_rmst_rows(
+  df0.list = list(TGT=extend.results$df.RMST.0.TGT, FED=extend.results$df.RMST.0.FED, CCOD=extend.results$df.RMST.0.CCOD),
+  df1.list = list(TGT=extend.results$df.RMST.1.TGT, FED=extend.results$df.RMST.1.FED, CCOD=extend.results$df.RMST.1.CCOD),
+  dfdiff.list = list(TGT=extend.results$df.RMST.diff.TGT, FED=extend.results$df.RMST.diff.FED, CCOD=extend.results$df.RMST.diff.CCOD)
+)
 
-df.RMST.1 <- rbind(
-  data.frame(Method = "TGT",  add_CI(extend.results$df.RMST.1.TGT,   "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "FED",  add_CI(extend.results$df.RMST.1.FED,   "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "CCOD", add_CI(extend.results$df.RMST.1.CCOD,  "RMST", "sd", digits_ci = 2, digits_p = 3))
-)[, c("Method", "time.max", "RMST", "sd", "CI", "pval")]
-xtable(df.RMST.1, digits = c(0, 0, 0, 2, 2, 0, 3))
+### --- Print Table 2 in Section 5
+print(tab.RD.SR, row.names = FALSE)
+# xtable(tab.RD.SR, align = c("r","r","r","c","c","c","c","c","c"),
+#        caption = "Estimated risk RD and SR at days 148, 330, and 512.",
+#        label = "tab:RD-AMP")
 
-df.RMST.diff <- rbind(
-  data.frame(Method = "TGT",  add_CI(extend.results$df.RMST.diff.TGT,  "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "FED",  add_CI(extend.results$df.RMST.diff.FED,  "RMST", "sd", digits_ci = 2, digits_p = 3)),
-  data.frame(Method = "CCOD", add_CI(extend.results$df.RMST.diff.CCOD, "RMST", "sd", digits_ci = 2, digits_p = 3))
-)[, c("Method", "time.max", "RMST", "sd", "CI", "pval")]
-
-xtable(df.RMST.diff, digits = c(0, 0, 0, 2, 2, 0, 3))
+### --- Print Table 3 in Section 5
+print(tab.RMST, row.names = FALSE)
+# xtable(tab.RMST, align = c("r","l","r","c","c","c","c"),
+#        caption = "Estimated RMST by treatment group and RMST difference up to day 601.",
+#        label = "tab:RMST-AMP")
 
 ### ----------------------------------------------------------------------------
 ### Reproducibility 5: Figures A.1, A.2 and A.3 in Supplement A
 ### ----------------------------------------------------------------------------
-
 ### --- Run and save results of the OA region
 result.OA <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="African country other than South Africa",
