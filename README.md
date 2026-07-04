@@ -2,11 +2,45 @@
 
 ## Data Analysis Results (Main Text Sections 2 \& 5 and Web Appendix A)
 
-Reviewer can reproduce the data analysis results using the code in the `AMP Analysis` folder of this repository. We recommend downloading this folder to your local machine and setting it as the R working directory before running the scripts.
+## AMP Data Analysis
 
-**Before running any R code, please copy the `amp_survival.csv` data file (uploaded separately through the journal's submission system) into this folder. To comply with the data use agreement, please do not distribute, copy, or upload the CSV file outside the reproducibility review process.**
+Reviewer can reproduce all data analysis results using the three R scripts in the `AMP Analysis` folder.
 
+**Before running any R code, please:***
 
+1. Download the entire `AMP Analysis` folder and set it as your R working directory.
+2. Copy the `amp_survival.csv` data file (uploaded separately through the journal submission system) into this folder.
+3. To comply with the data use agreement, please do **not** distribute, copy, or upload the CSV file outside the reproducibility review process.
+
+The three scripts reproduce the manuscript results as follows.
+
+### Part I (`Repro_AMP_1.R`)
+
+This script reproduces the primary data analysis in the manuscript, including:
+
+* **Figure 1** (target-only analyses) in Section 2;
+* **Table 1** (baseline characteristics and outcome summary) in Section 2;
+* **Figure 5** (estimated survival curves for South Africa region and federated weights) in Section 5;
+* **Tables 2 and 3** (RD, SR and RMST analyses for South Africa) in Section 5;
+* **Figures A.1–A.3** in Web Appendix A. 
+  
+Intermediate analysis results are automatically saved as `.Rdata` files (e.g., `result_main_SA.Rdata`) for subsequent analyses.
+
+### Part II (`Repro_AMP_2.R`)
+
+This script reproduces the supplementary analyses under the reduced adjustment model, including:
+
+* **Figure A.4** in Web Appendix A;
+* **Tables A.1 and A.2** in Web Appendix A.
+
+This script generates and saves `result_main_SA_2.Rdata`, which is subsequently used to produce the supplementary tables.
+
+### Part III (`Repro_AMP_3.R`)
+
+This script reproduces:
+
+* **Figure 3** (propensity score diagnostics) in Section 5;
+* **Figure 4** (nuisance function diagnostics) in Section 5.
 
 ## Simulation Study Results (Web Appendix E)
 
