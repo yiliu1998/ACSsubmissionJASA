@@ -33,4 +33,4 @@ The script `SumStat.R` generates the following PDF files, corresponding to figur
 | Figure E.15 (Survival Ratio) | `relbias_SR.pdf`, `rrmse_SR.pdf`, `cp_SR.pdf` |
 | Figure E.16 (Restricted Mean Survival Time) | `relbias_RMST.pdf`, `rrmse_RMST.pdf`, `cp_RMST.pdf` |
 
-However, the reviewer can also run simulation study from the beginning. Please open the `simuExtend.R` file to check more details and run simulations. Please also check the comments in this R file to make sure all required packages are installed and loaded, and if the parallel computation can be conducted in your device.
+However, the reviewer can also run simulation study from the beginning. Please open the `simuExtend.R` file to check more details and run simulations. This may take in total more than 9 hours to finish on a typical local computer device. Please also check the comments in this R file to make sure all required packages are installed and loaded, and if the parallel computation can be conducted in your device.
