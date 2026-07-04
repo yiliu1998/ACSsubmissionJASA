@@ -10,7 +10,16 @@ Please run `surv_plots_E1.R` to get the true treatment-specific survival curves 
 
 ### Reproducing Figures E.2–E.13 (Simulations for Survival Curves)
 
+To reproduce the simulation results for treatment-specific survival functions (Online Supplement, Figures E.2--E.13), please set your R working path as the `Results E.3&4` folder here, open and run `SumStat.R` file. We provided all intermediate simulation results as several `.RData` files for the reviewer to directly reproduce the figures. The script generates the following PDF files.
 
+| Manuscript Figures | PDF files generated |
+|--------------------|--------------------|
+| Figures E.2--E.4 ($n_k=300$) | `bias_s.pdf`, `relbias_s.pdf`, `rrmse_s.pdf`, `cp_s.pdf`, `ciw_s.pdf` |
+| Figures E.5--E.7 ($n_k=600$) | `bias_l.pdf`, `relbias_l.pdf`, `rrmse_l.pdf`, `cp_l.pdf`, `ciw_l.pdf` |
+| Figures E.8--E.10 ($n_k=1000$) | `bias_l2.pdf`, `relbias_l2.pdf`, `rrmse_l2.pdf`, `cp_l2.pdf`, `ciw_l2.pdf` |
+| Figures E.11--E.13 (Limited overlap) | `bias_limO.pdf`, `relbias_limO.pdf`, `rrmse_limO.pdf`, `cp_limO.pdf`, `ciw_limO.pdf` |
+
+---
 
 ### Reproducing Figures E.14–E.16 (Additional Causal Contrasts)
 
