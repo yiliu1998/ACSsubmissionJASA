@@ -12,7 +12,7 @@ source("Extends.R")
 source("EIFestimates.R")
 
 ### --- generate observed data using DGP.R
-# source("DGP.R")
+source("DGP.R")
 
 ### --- number of cores used, also the batch size
 ### --- please customize the number
