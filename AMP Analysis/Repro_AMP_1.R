@@ -40,34 +40,61 @@ dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
 ### ----------------------------------------------------------------------------
 #### Reproducibility 1: Numbers in Table 1 in Section 2
 ### ----------------------------------------------------------------------------
-table(dat.hiv$site)
-mean(dat.hiv$age)
-sd(dat.hiv$age)
+fmt_mean_sd <- function(mean, sd, digits=2) sprintf(paste0("%.", digits, "f (%.", digits, "f)"), mean, sd)
+fmt_count_pct <- function(count, rate, digits=2) sprintf(paste0("%d (%.", digits, "f%%)"), count, 100 * rate)
+make_amp_table1 <- function(dat.hiv) {
+  site_levels <- levels(dat.hiv$site)
+  site_labels <- c(
+    "South Africa" = "SA (women)",
+    "African country other than South Africa" = "OA (women)",
+    "Brazil or Peru" = "BP (men, TG)",
+    "United States or Switzerland" = "US (men, TG)"
+  )
+  
+  make_block <- function(a) {
+    dat.a <- dat.hiv %>% filter(A == a)
+    total <- dat.a %>% summarize(
+      n=n(), age.mean=mean(age), age.sd=sd(age),
+      bweight.mean=mean(bweight), bweight.sd=sd(bweight),
+      score.mean=mean(score), score.sd=sd(score),
+      event.count=sum(Delta), event.rate=mean(Delta)
+    )
+    bysite <- dat.a %>% group_by(site) %>% summarize(
+      n=n(), age.mean=mean(age), age.sd=sd(age),
+      bweight.mean=mean(bweight), bweight.sd=sd(bweight),
+      score.mean=mean(score), score.sd=sd(score),
+      event.count=sum(Delta), event.rate=mean(Delta), .groups="drop"
+    )
+    
+    vals <- c("Total", unname(site_labels[site_levels]))
+    out <- data.frame(Variable=c("Age (years)", "Weight (kg)", "ML risk score", "HIV-1 diagnosis"), check.names=FALSE)
+    for (j in seq_along(vals)) out[[vals[j]]] <- NA_character_
+    
+    fill_col <- function(col, x) {
+      out[out$Variable=="Age (years)", col] <<- fmt_mean_sd(x$age.mean, x$age.sd, 2)
+      out[out$Variable=="Weight (kg)", col] <<- fmt_mean_sd(x$bweight.mean, x$bweight.sd, 2)
+      out[out$Variable=="ML risk score", col] <<- fmt_mean_sd(x$score.mean, x$score.sd, 2)
+      out[out$Variable=="HIV-1 diagnosis", col] <<- fmt_count_pct(x$event.count, x$event.rate, 2)
+    }
+    
+    fill_col("Total", total)
+    for (s in site_levels) fill_col(site_labels[[s]], bysite %>% filter(site == s))
+    out
+  }
+  
+  tab.treated <- make_block(1)
+  tab.control <- make_block(0)
+  
+  cat("\nTreated (bnAb) group\n")
+  print(tab.treated, row.names=FALSE)
+  cat("\nControl (placebo) group\n")
+  print(tab.control, row.names=FALSE)
+  
+  invisible(list(treated=tab.treated, control=tab.control))
+}
 
-dat.hiv %>% group_by(A) %>% summarize(mean(age), sd(age))
-
-mean(dat.hiv$score)
-sd(dat.hiv$score)
-
-mean(dat.hiv$bweight)
-sd(dat.hiv$bweight)
-
-sum(dat.hiv$Delta)
-mean(dat.hiv$Delta)
-
-dat.sum <- dat.hiv %>% group_by(A) %>% 
-  summarize(n=n(),
-            age.mean=mean(age), age.sd=sd(age),
-            score.mean=mean(score), score.sd=sd(score),
-            bweight.mean=mean(bweight), bweight.sd=sd(bweight),
-            event.count=sum(Delta), event.rate=mean(Delta))
-
-dat.sum.site <- dat.hiv %>% group_by(A, site) %>% 
-  summarize(n=n(),
-            age.mean=mean(age), age.sd=sd(age),
-            score.mean=mean(score), score.sd=sd(score),
-            bweight.mean=mean(bweight), bweight.sd=sd(bweight),
-            event.count=sum(Delta), event.rate=mean(Delta))
+### --- Print Table 1 in Section 2
+make_amp_table1(dat.hiv)
 
 ### ----------------------------------------------------------------------------
 ### Reproducibility 2: Sensitivity analysis for censoring in Section 5.1
