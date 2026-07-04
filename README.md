@@ -6,7 +6,7 @@
 
 Reviewer can reproduce all data analysis results using the three R scripts in the `AMP Analysis` folder.
 
-**Before running any R code, please:***
+**Before running any R code, please:**
 
 1. Download the entire `AMP Analysis` folder and set it as your R working directory.
 2. Copy the `amp_survival.csv` data file (uploaded separately through the journal submission system) into this folder.
@@ -46,7 +46,7 @@ This script reproduces:
 
 ### Reproducing Figure E.1 (True Survival Curves)
 
-Please run `surv_plots_E1.R` to get the true treatment-specific survival curves in simulations. This typically takes less than 5 minutes to finish. 
+Please run `surv_plots_E1.R` to get the true treatment-specific survival curves in simulations. This typically takes less than 2 minutes to finish. 
 
 ### Reproducing Figures E.2–E.13 (Simulations for Survival Curves)
 
