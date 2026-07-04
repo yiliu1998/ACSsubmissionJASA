@@ -19,8 +19,6 @@ To reproduce the simulation results for treatment-specific survival functions (O
 | Figures E.8--E.10 ($n_k=1000$) | `bias_l2.pdf`, `relbias_l2.pdf`, `rrmse_l2.pdf`, `cp_l2.pdf`, `ciw_l2.pdf` |
 | Figures E.11--E.13 (Limited overlap) | `bias_limO.pdf`, `relbias_limO.pdf`, `rrmse_limO.pdf`, `cp_limO.pdf`, `ciw_limO.pdf` |
 
----
-
 ### Reproducing Figures E.14–E.16 (Additional Causal Contrasts)
 
 We provide the intermediate `.RData` files so that reviewers can directly reproduce the summary statistics and figures without rerunning the simulations. To reproduce these results, set your working path to `Results E.5` folder, and simply run `SumStat.R` file. 
