@@ -1,6 +1,6 @@
 # R Code Repository for "Targeted Data Fusion for Region-Specific Survival Effects in the AMP HIV Prevention Trials"
 
-### Reproducing Figures E.14--E.16 (Additional Causal Contrasts)
+### Reproducing Figures E.14–E.16 (Additional Causal Contrasts)
 
 We provide the intermediate `.RData` files so that reviewers can directly reproduce the summary statistics and figures without rerunning the simulations. To reproduce these results, set your working path to `Results E.5` folder, and simply run `SumStat.R` file. 
 
