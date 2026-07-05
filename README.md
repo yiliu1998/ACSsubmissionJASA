@@ -24,8 +24,6 @@ The main required packages were extracted from the reproducibility scripts, incl
 
 ## Data Analysis Results (Main Text Sections 2 \& 5 and Web Appendix A)
 
-## AMP Data Analysis
-
 Reviewer can reproduce all data analysis results using the three R scripts in the `AMP Analysis` folder.
 
 **Before running any R code, please:**
