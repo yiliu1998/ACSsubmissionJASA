@@ -1,8 +1,8 @@
 library(ggplot2)
 library(gridExtra)
+set.seed(20260704)
 
-#### Label shift
-N <- 10^4
+N <- 10^5
 r <- 0
 X1 <- x1 <- 33*rbeta(sum(N), shape1=1.1-0.05*r, shape2=1.1+0.2*r) + 9 + 2*r
 X2 <- 52*rbeta(sum(N), shape1=1.5+(x1+0.5*r)/20, shape2=4+2*r) + 7 + 2*r 
@@ -16,7 +16,6 @@ delta.t <- -0.36-0.1*(X1-25)+0.05*(X2-25)+0.05*(X3-2)
 ph.t.0 <- exp(-5.02+0.1*(X1-25)-0.1*(X2-25)+0.05*(X3-2))
 ph.t.1 <- exp(-5.02+0.1*(X1-25)-0.1*(X2-25)+0.05*(X3-2) + delta.t)
 
-# Baseline calculations
 S0_baseline <- sapply(t, function(time) mean(exp(-ph.t.0 * lambda * time^rho)))
 S1_baseline <- sapply(t, function(time) mean(exp(-ph.t.1 * lambda * time^rho)))
 
@@ -26,7 +25,6 @@ baseline_data <- data.frame(
   Group = rep(c("Control", "Treated"), each = length(t))
 )
 
-# Create baseline plot
 p.survs[[1]] <- ggplot(baseline_data, aes(x=Time, y=Survival, color=Group)) +
   geom_line(size=1) + ylim(0.3,1) + 
   labs(title="Target Site", x="Time", y="Survival Probability") +
@@ -47,9 +45,7 @@ for(D.T in 1:3) {
   )
   
   p.survs[[D.T+1]] <- ggplot() +
-    # Source site curves
     geom_line(data=survival_data, aes(x=Time, y=Survival, color=Group), size=1) +
-    # Add baseline curves in a neutral color or linetype
     geom_line(data=baseline_data, aes(x=Time, y=Survival, group=Group, color=Group), 
               linetype="dashed", alpha=0.5, size=0.8) +
     ylim(0.3,1) +
@@ -89,7 +85,7 @@ dev.off()
 
 
 #### Covariate shift
-N <- 10^4
+N <- 10^5
 r <- 0
 X1 <- x1 <- 33*rbeta(sum(N), shape1=1.1-0.05*r, shape2=1.1+0.2*r) + 9 + 2*r
 X2 <- 52*rbeta(sum(N), shape1=1.5+(x1+0.5*r)/20, shape2=4+2*r) + 7 + 2*r 
@@ -137,9 +133,7 @@ for(r in 1:3) {
   )
   
   p.survs[[r+1]] <- ggplot() +
-    # Source site curves
     geom_line(data=survival_data, aes(x=Time, y=Survival, color=Group), size=1) +
-    # Add baseline curves in a neutral color or linetype
     geom_line(data=baseline_data, aes(x=Time, y=Survival, group=Group, color=Group), 
               linetype="dashed", alpha=0.5, size=0.8) +
     ylim(0.3,1) +
@@ -165,9 +159,7 @@ survival_data <- data.frame(
 )
 
 p.survs[[r+1]] <- ggplot() +
-  # Source site curves
   geom_line(data=survival_data, aes(x=Time, y=Survival, color=Group), size=1) +
-  # Add baseline curves in a neutral color or linetype
   geom_line(data=baseline_data, aes(x=Time, y=Survival, group=Group, color=Group), 
             linetype="dashed", alpha=0.5, size=0.8) +
   ylim(0.3,1) +
@@ -178,5 +170,3 @@ pdf("surv_curves_covs.pdf", height=2.5, width=15)
 grid.arrange(p.survs[[1]], p.survs[[2]], p.survs[[3]], p.survs[[4]], 
              p.survs[[5]], nrow=1, widths=c(1,1,1,1,1.4))
 dev.off()
-
-
