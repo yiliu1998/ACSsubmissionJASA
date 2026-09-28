@@ -37,7 +37,7 @@ Reviewer can reproduce all data analysis results using the three R scripts in th
 **Before running any R code, please:**
 
 1. Download the entire `AMP Analysis` folder and set it as your R working directory.
-2. Copy the `amp_survival.csv` data file (uploaded separately through the journal submission system) into this folder.
+2. Download the `amp_survival.csv` data file from the Harvard Dataverse and place it in this folder.
 3. To comply with the data use agreement, please do **not** distribute, copy, or upload the CSV file outside the reproducibility review process.
 
 The three scripts reproduce the manuscript results as follows.
