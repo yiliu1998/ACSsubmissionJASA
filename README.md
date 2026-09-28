@@ -22,6 +22,16 @@ devtools::install_github("tedwestling/survSuperLearner")
 
 The main required packages were extracted from the reproducibility scripts, including the AMP analysis scripts and simulation scripts.
 
+## Main implementation of the proposed federated method
+
+The primary implementation of the proposed federated survival estimation method is provided in:
+
+`FuseSurv_main.R`
+
+This standalone script contains the main implementation of the proposed approach, including the target-site estimator, density-ratio-adjusted source contributions, the data-adaptive federated weighting procedure, the CCOD estimator, and optional extensions to survival difference, survival ratio, and RMST estimands.
+
+Readers interested in adapting the proposed method to their own data should begin with `FuseSurv_main.R`.
+
 ## Data Analysis Results (Main Text Sections 2 \& 5 and Web Appendix A)
 
 Reviewer can reproduce all data analysis results using the three R scripts in the `AMP Analysis` folder.
