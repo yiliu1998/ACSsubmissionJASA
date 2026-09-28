@@ -21,7 +21,7 @@ library(survminer)
 library(EValue)
 
 ### Read the AMP trials dataset and construct the analysis variables.
-dat <- read.csv("amp_survival_Liuetal2026.csv")
+dat <- read.csv("amp_survival.csv")
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
