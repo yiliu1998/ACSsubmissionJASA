@@ -1,7 +1,11 @@
 ### ----------------------------------------------------------------------------
-### Reproducibility: This script plots Figures E.14, E.15 and E.16 in Online
-### Supplemental Material Section E.6
+### Reproducibility: This script plots Figures E.14, E.15, and E.16 in Online
+### Supplemental Material Section E.5.
+###
+### The figures summarize absolute relative bias, relative RMSE, and coverage
+### probability for survival difference, survival ratio, and RMST estimands.
 ### ----------------------------------------------------------------------------
+
 load("truth.Rdata")
 library(ggplot2)
 library(dplyr)
@@ -13,6 +17,7 @@ methods <- c("TGT", "CCOD", "FED")
 method_levels <- c("FED", "TGT", "CCOD")
 time_plot <- c(30, 60)
 
+# Mapping between simulation scenarios and saved result files.
 case_files <- c(
   "Homogeneous" = "homo_contrasts.RData",
   "Covariate Shift" = "diffX_contrasts.RData",
@@ -22,12 +27,16 @@ case_files <- c(
 )
 case_levels <- names(case_files)
 
+
+# Load one saved simulation-result file.
 load_results <- function(file) {
   env <- new.env()
   load(file, envir = env)
   env$results
 }
 
+
+# Extract replicate-level survival difference or survival ratio estimates.
 extract_time_metric <- function(results, metric, method, M = 500) {
   value_col <- metric
   df_name <- paste0("df.", metric, ".", method)
@@ -44,6 +53,8 @@ extract_time_metric <- function(results, metric, method, M = 500) {
   list(time = time_use, est = est, sd = sd)
 }
 
+
+# Extract replicate-level RMST estimates for one treatment arm or the difference.
 extract_rmst_metric <- function(results, measure, method, M = 500) {
   df_name <- paste0("df.RMST.", measure, ".", method)
   est <- sd <- rep(NA_real_, M)
@@ -57,6 +68,9 @@ extract_rmst_metric <- function(results, measure, method, M = 500) {
   list(est = est, sd = sd)
 }
 
+
+# Compute absolute relative bias, relative RMSE, and coverage probability
+# for survival difference or survival ratio over time.
 summarize_time_metric <- function(results, case_name, metric, true_value, M = 500) {
   extracted <- setNames(
     lapply(methods, function(m) extract_time_metric(results, metric, m, M)),
@@ -84,6 +98,8 @@ summarize_time_metric <- function(results, case_name, metric, true_value, M = 50
   bind_rows(out)
 }
 
+
+# Compute the same performance metrics for arm-specific RMSTs and their difference.
 summarize_rmst_metric <- function(results, case_name, M = 500) {
   rmst_info <- tibble(
     Measure = c("A = 0", "A = 1", "Difference"),
@@ -120,6 +136,8 @@ summarize_rmst_metric <- function(results, case_name, M = 500) {
   }))
 }
 
+
+# Summarize all three estimand types for one simulation scenario.
 summarize_case <- function(case_name, file, M = 500) {
   results <- load_results(file)
   bind_rows(
@@ -129,6 +147,8 @@ summarize_case <- function(case_name, file, M = 500) {
   )
 }
 
+
+# Combine summary metrics across all simulation scenarios.
 sumstat <- bind_rows(
   Map(function(case_name, file) summarize_case(case_name, file, M),
       names(case_files), case_files)
@@ -139,6 +159,8 @@ sumstat <- bind_rows(
     Measure = factor(Measure, levels = c("A = 0", "A = 1", "Difference"))
   )
 
+
+# Plot heatmaps for time-specific estimands.
 plot_time_heatmap <- function(data, value_col, legend_name, fill_colors, fill_values,
                               file, width = 8, height = 2, limits = NULL) {
   p <- ggplot(data, aes(x = factor(time), y = Method, fill = .data[[value_col]])) +
@@ -161,6 +183,8 @@ plot_time_heatmap <- function(data, value_col, legend_name, fill_colors, fill_va
   invisible(p)
 }
 
+
+# Plot heatmaps for arm-specific RMSTs and the RMST difference.
 plot_rmst_heatmap <- function(data, value_col, legend_name, fill_colors, fill_values,
                               file, width = 8, height = 2, limits = NULL,
                               show_x_text = FALSE) {
@@ -190,7 +214,8 @@ plot_rmst_heatmap <- function(data, value_col, legend_name, fill_colors, fill_va
   invisible(p)
 }
 
-## Relative percent bias plots
+
+## Figure E.14: absolute relative bias
 bias_colors <- c("white", "white", "green4")
 bias_values <- c(0, 15, 50)
 
@@ -224,7 +249,8 @@ plot_rmst_heatmap(
   show_x_text = FALSE
 )
 
-## RRMSE plots
+
+## Figure E.15: relative RMSE
 rrmse_colors <- c("white", "white", "orange")
 
 plot_time_heatmap(
@@ -257,7 +283,8 @@ plot_rmst_heatmap(
   show_x_text = FALSE
 )
 
-## Coverage probability plots
+
+## Figure E.16: coverage probability
 cp_colors <- c("mediumvioletred", "white", "mediumvioletred")
 cp_values <- c(0, 85, 95, 99.5, 100)
 

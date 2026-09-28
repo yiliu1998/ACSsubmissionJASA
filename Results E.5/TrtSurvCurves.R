@@ -1,3 +1,21 @@
+# ------------------------------------------------------------
+# Construct cross-fitted influence-function and augmentation quantities
+# used by the extended causal contrasts computations in Section E.5.
+#
+# Inputs:
+#   data       : combined multi-site dataset
+#   covar.name : baseline covariate names
+#   site.var   : site indicator
+#   tgt.name   : target-site label
+#   trt.name   : treatment variable
+#   time.var   : observed follow-up time
+#   event      : event indicator
+#   fit.times  : time grid for nuisance estimation
+#   eval.times : evaluation times
+#
+# Output:
+#   influence-function, augmentation, and survival-prediction quantities
+# ------------------------------------------------------------
 TrtSurvCurves <- function(data, 
                           covar.name, 
                           site.var,
@@ -38,9 +56,6 @@ TrtSurvCurves <- function(data,
   set.seed(seed=s)
   seeds <- round(runif(20*K, 0, 20e5))
   
-  ################################################################
-  ## ~~~~~~~~~~~~~~~ Target-site-only estimator ~~~~~~~~~~~~~~~ ##
-  ################################################################
   dat0 <- data[site==0, ]
   A <- dat0[, trt.name]
   Y <- dat0[, time.var]
@@ -105,14 +120,6 @@ TrtSurvCurves <- function(data,
   }
   Aug.01.mean <- Aug.01.mean / n.folds
   Aug.00.mean <- Aug.00.mean / n.folds
-  # theta.00 <- theta.00 / n.folds
-  # theta.01 <- theta.01 / n.folds
-  # theta.00.sd <- theta.00.sd / (n.folds*sqrt(n.folds))
-  # theta.01.sd <- theta.01.sd / (n.folds*sqrt(n.folds))
-  
-  # df.TGT <- data.frame(time=eval.times, 
-  #                      surv1=theta.01, surv1.sd=theta.01.sd, 
-  #                      surv0=theta.00, surv0.sd=theta.00.sd )
   
   ### train models from the target site
   surv.fit.0.tgt=survSuperLearner(time=Y[A==0], 
@@ -129,9 +136,6 @@ TrtSurvCurves <- function(data,
                                   event.SL.library=event.SL.library, 
                                   cens.SL.library=cens.SL.library)
   
-  ##################################################################
-  ## ~~~~~~~~~ Density-ratio adjusted local estimates ~~~~~~~~~~~ ##
-  ##################################################################
   X0 <- as.matrix(dat0[, covar.name])
   Aug.R0.mean <- Aug.R1.mean <- Aug.R0.mean.sour <- Aug.R1.mean.sour <- 
     matrix(0, nrow=N.time, ncol=K-1)
@@ -215,10 +219,6 @@ TrtSurvCurves <- function(data,
       Aug.R1.mean.sour[,r] <- Aug.R1.mean.sour[,r] + S1$AUG.means[eval.ind]
       Aug.R0.mean.sour[,r] <- Aug.R0.mean.sour[,r] + S0$AUG.means[eval.ind]
     }
-    # theta.R0 <- theta.R0 / n.folds
-    # theta.R1 <- theta.R1 / n.folds
-    # theta.R0.sd <- theta.R0.sd / (n.folds*sqrt(n.folds))
-    # theta.R1.sd <- theta.R1.sd / (n.folds*sqrt(n.folds))
     
     IF.R1[[r]] <- IF.R1[[r]][-1,]
     IF.R0[[r]] <- IF.R0[[r]][-1,]
@@ -228,80 +228,6 @@ TrtSurvCurves <- function(data,
     Aug.R0.mean.sour[,r] <- Aug.R0.mean.sour[,r] / n.folds
   }
   
-  ##################################################################
-  ## ~~~~~~~~~~~~~~~ Federated weighting estimate ~~~~~~~~~~~~~~~ ##
-  ##################################################################
-  # set.seed(seeds[K+5])
-  # wt1 <- wt0 <- chi0 <- chi1 <- augdiff0 <- augdiff1 <- matrix(NA, nrow=N.time, ncol=K-1)
-  # for(i in 1:N.time) {
-  #   IF1.tgt=c(IF.01[,i]-mean(IF.01[,i]), rep(0, length(site[site!=0])))
-  #   IF0.tgt=c(IF.00[,i]-mean(IF.00[,i]), rep(0, length(site[site!=0])))
-  #   IF0.diff <- IF1.diff <- matrix(0, ncol=K-1, nrow=length(IF0.tgt))
-  #   ind0 <- which(site==0)
-  #   for(r in 1:(K-1)) {
-  #     IF0.diff[,r][ind0] <- IF0.tgt[ind0]
-  #     IF1.diff[,r][ind0] <- IF1.tgt[ind0]
-  #     
-  #     ind <- which(site==r)
-  #     IF0.diff[,r][ind] <- -IF.R0[[r]][,i] 
-  #     IF1.diff[,r][ind] <- -IF.R1[[r]][,i] 
-  #     
-  #     chi0[i,r] <- Aug.00.mean[i]-Aug.R0.mean[i,r]
-  #     chi1[i,r] <- Aug.01.mean[i]-Aug.R1.mean[i,r]
-  #     
-  #     augdiff0[i,r] <- Aug.00.mean[i]-Aug.R0.mean.sour[i,r]
-  #     augdiff1[i,r] <- Aug.01.mean[i]-Aug.R1.mean.sour[i,r]
-  #   } 
-  #   
-  #   cvfit0=try(cv.glmnet(x=IF0.diff, y=IF0.tgt))
-  #   if(class(cvfit0)[1]!="try-error") {
-  #     fit0=try(glmnet(x=IF0.diff, y=IF0.tgt, 
-  #                     penalty.factor=chi0[i,]^2,
-  #                     intercept=FALSE,
-  #                     alpha=1,
-  #                     lambda=cvfit0$lambda.1se,
-  #                     lower.limits=0,
-  #                     upper.limits=1))
-  #     if(class(fit0)[1]!="try-error") { 
-  #       wt0[i,]=coef(fit0, s=cvfit0$lambda.1se)[-1] } else { wt0[i,]=rep(0, K-1) }
-  #   } else { wt0[i,]=rep(0, K-1) }
-  #   
-  #   cvfit1=try(cv.glmnet(x=IF1.diff, y=IF1.tgt))
-  #   if(class(cvfit1)[1]!="try-error") {
-  #     fit1=try(glmnet(x=IF1.diff, y=IF1.tgt, 
-  #                     penalty.factor=chi1[i,]^2,
-  #                     intercept=FALSE,
-  #                     alpha=1,
-  #                     lambda=cvfit1$lambda.1se,
-  #                     lower.limits=0,
-  #                     upper.limits=1))
-  #     if(class(fit1)[1]!="try-error") { 
-  #       wt1[i,]=coef(fit1, s=cvfit1$lambda.1se)[-1] } else { wt1[i,]=rep(0, K-1) }
-  #   } else { wt1[i,]=rep(0, K-1) }
-  # } 
-  # wt0.tgt <- 1-apply(wt0,1,sum)
-  # wt1.tgt <- 1-apply(wt1,1,sum)
-  # weights <- cbind(wt0.tgt, wt0, wt1.tgt, wt1)
-  # 
-  # theta0.fed <- apply(augdiff0*wt0, 1, sum) + theta.00
-  # theta1.fed <- apply(augdiff1*wt1, 1, sum) + theta.01
-  # 
-  # all.var0 <- (apply(IF.00,2,var)*(wt0.tgt^2+2*wt0.tgt*(1-wt0.tgt)) + apply(S.00,2,var)*(1-wt0.tgt)^2) / n.site[1] 
-  # all.var1 <- (apply(IF.01,2,var)*(wt1.tgt^2+2*wt1.tgt*(1-wt1.tgt)) + apply(S.01,2,var)*(1-wt1.tgt)^2) / n.site[1] 
-  # for(k in 1:(K-1)) {
-  #   all.var0 <- all.var0 + apply(IF.R0[[k]],2,var)*wt0[,k]^2 / n.site[k+1]
-  #   all.var1 <- all.var1 + apply(IF.R1[[k]],2,var)*wt1[,k]^2 / n.site[k+1]
-  # }
-  # theta0.fed.sd <- sqrt(all.var0) 
-  # theta1.fed.sd <- sqrt(all.var1) 
-  # 
-  # df.FED <- data.frame(time=eval.times, 
-  #                      surv1=theta1.fed, surv1.sd=theta1.fed.sd, 
-  #                      surv0=theta0.fed, surv0.sd=theta0.fed.sd )
-  
-  ##################################################################
-  ## ~~~~~~~~~~~~~~~~~~~~~~~ CCOD estimate ~~~~~~~~~~~~~~~~~~~~~~ ##
-  ##################################################################
   A <- data[, trt.name]
   Y <- data[, time.var]
   Delta <- data[, event]
@@ -326,7 +252,7 @@ TrtSurvCurves <- function(data,
                         family=binomial(), SL.library=prop.SL.library)
     g.hats=predict(ps.fit, X[pred.ind, ])$pred
     
-    # propensity score of the target site R=0
+    # propensity score of the target site 
     eta0.fit=SuperLearner(Y=R[train.ind], X=X[train.ind,], 
                           family=binomial(), SL.library=prop.SL.library)
     eta0.hats=predict(eta0.fit, X[pred.ind, ])$pred
@@ -372,10 +298,6 @@ TrtSurvCurves <- function(data,
   theta.ccod.0.sd <- theta.ccod.0.sd / (n.folds*sqrt(n.folds))
   theta.ccod.1.sd <- theta.ccod.1.sd / (n.folds*sqrt(n.folds))
   
-  # df.CCOD <- data.frame(time=eval.times, 
-  #                       surv1=theta.ccod.1, surv1.sd=theta.ccod.1.sd, 
-  #                       surv0=theta.ccod.0, surv0.sd=theta.ccod.0.sd )
-  
   ind.R1.ccod <- unlist(lapply(seq_along(ind.R1.ccod), function(j) {
     k <- ind.R1.ccod[[j]][1]
     n <- ind.R1.ccod[[j]][2]
@@ -383,8 +305,8 @@ TrtSurvCurves <- function(data,
     end   <- (j - 1) * n + k
     start:end
   }))
-  return(list(#df.TGT=df.TGT, df.FED=df.FED, df.CCOD=df.CCOD,
-              IF.00=IF.00, IF.01=IF.01, S.00=S.00, S.01=S.01, 
+  
+  return(list(IF.00=IF.00, IF.01=IF.01, S.00=S.00, S.01=S.01, 
               IF.R0=IF.R0, IF.R1=IF.R1, IF.CCOD.0=IF.CCOD.0, IF.CCOD.1=IF.CCOD.1, 
               Aug.00.mean=Aug.00.mean, Aug.01.mean=Aug.01.mean, 
               Aug.R0.mean=Aug.R0.mean, Aug.R1.mean=Aug.R1.mean,
