@@ -1,3 +1,21 @@
+# ------------------------------------------------------------
+# Construct cross-fitted influence-function and augmentation quantities
+# used by the extended causal contrasts computations in data applications. 
+#
+# Inputs:
+#   data       : combined multi-site dataset
+#   covar.name : baseline covariate names
+#   site.var   : site indicator
+#   tgt.name   : target-site label
+#   trt.name   : treatment variable
+#   time.var   : observed follow-up time
+#   event      : event indicator
+#   fit.times  : time grid for nuisance estimation
+#   eval.times : evaluation times
+#
+# Output:
+#   influence-function, augmentation, and survival-prediction quantities
+# ------------------------------------------------------------
 TrtSurvCurves <- function(data, 
                           covar.name=c("age","score","bweight"), 
                           site.var="site",
@@ -41,6 +59,9 @@ TrtSurvCurves <- function(data,
   ################################################################
   ## ~~~~~~~~~~~~~~~ Target-site-only estimator ~~~~~~~~~~~~~~~ ##
   ################################################################
+  
+  ### Cross-fit treatment, event-survival, and censoring nuisance functions
+  ### within the target region and construct treatment-specific survival estimates.
   dat0 <- data[site==0, ]
   A <- dat0[, trt.name]
   Y <- dat0[, time.var]
@@ -114,7 +135,8 @@ TrtSurvCurves <- function(data,
                        surv1=theta.01, surv1.sd=theta.01.sd, 
                        surv0=theta.00, surv0.sd=theta.00.sd )
   
-  ### train models from the target site
+  ### Fit treatment-specific survival models using the full target-region sample
+  ### for prediction in the source regions.
   surv.fit.0.tgt=survSuperLearner(time=Y[A==0], 
                                   event=Delta[A==0], 
                                   X=X[A==0,], 
@@ -129,9 +151,15 @@ TrtSurvCurves <- function(data,
                                   event.SL.library=event.SL.library, 
                                   cens.SL.library=cens.SL.library)
   
+  
   ##################################################################
   ## ~~~~~~~~~ Density-ratio adjusted local estimates ~~~~~~~~~~~ ##
   ##################################################################
+  
+  ### For each source region, estimate source-to-target density ratios,
+  ### treatment propensity scores, and source-specific censoring models.
+  ### Event-survival predictions are obtained from the target-region models.
+  
   X0 <- as.matrix(dat0[, covar.name])
   Aug.R0.mean <- Aug.R1.mean <- Aug.R0.mean.sour <- Aug.R1.mean.sour <- 
     matrix(0, nrow=N.time, ncol=K-1)
@@ -231,6 +259,10 @@ TrtSurvCurves <- function(data,
   ##################################################################
   ## ~~~~~~~~~~~~~~~ Federated weighting estimate ~~~~~~~~~~~~~~~ ##
   ##################################################################
+  
+  ### Construct source-target influence-function contrasts and discrepancy terms,
+  ### then estimate nonnegative adaptive source weights by penalized regression.
+  
   set.seed(seeds[K+5])
   wt1 <- wt0 <- chi0 <- chi1 <- augdiff0 <- augdiff1 <- matrix(NA, nrow=N.time, ncol=K-1)
   for(i in 1:N.time) {
@@ -281,11 +313,14 @@ TrtSurvCurves <- function(data,
   } 
   wt0.tgt <- 1-apply(wt0,1,sum)
   wt1.tgt <- 1-apply(wt1,1,sum)
+  
+  ### Combine the target weight with the estimated source weights.
   weights <- cbind(wt0.tgt, wt0, wt1.tgt, wt1)
   
   theta0.fed <- apply(augdiff0*wt0, 1, sum) + theta.00
   theta1.fed <- apply(augdiff1*wt1, 1, sum) + theta.01
   
+  ### Compute the variance estimator corresponding to the selected FED weights.
   all.var0 <- (apply(IF.00,2,var)*(wt0.tgt^2+2*wt0.tgt*(1-wt0.tgt)) + apply(S.00,2,var)*(1-wt0.tgt)^2) / n.site[1] 
   all.var1 <- (apply(IF.01,2,var)*(wt1.tgt^2+2*wt1.tgt*(1-wt1.tgt)) + apply(S.01,2,var)*(1-wt1.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
@@ -326,7 +361,7 @@ TrtSurvCurves <- function(data,
                         family=binomial(), SL.library=prop.SL.library)
     g.hats=predict(ps.fit, X[pred.ind, ])$pred
     
-    # propensity score of the target site R=0
+    # propensity score of the target site
     eta0.fit=SuperLearner(Y=R[train.ind], X=X[train.ind,], 
                           family=binomial(), SL.library=prop.SL.library)
     eta0.hats=predict(eta0.fit, X[pred.ind, ])$pred
@@ -393,7 +428,17 @@ TrtSurvCurves <- function(data,
               eval.times=eval.times, weights=weights, chi=cbind(chi0, chi1)))
 }
 
-
+# ------------------------------------------------------------
+# Compute the inverse-variance weighted (IVW) and simple pooled
+# comparator estimators used in the AMP data analysis.
+#
+# Inputs:
+#   data and variable names follow TrtSurvCurves()
+#
+# Output:
+#   df.IVW  : treatment-specific IVW survival estimates
+#   df.POOL : treatment-specific pooled survival estimates
+# ------------------------------------------------------------
 POOL_IVW <- function(data, 
                      covar.name=c("age","score","bweight"), 
                      site.var="site",
@@ -560,7 +605,8 @@ POOL_IVW <- function(data,
                                surv0=theta.R0, surv0.sd=theta.R0.sd )
   }
   
-  #### IVW ####
+  #### Inverse-variance weighted estimator ####
+  ### Combine target- and source-region survival estimates using inverse-variance weights.
   df.IVW <- data.frame(time=df.TGT$time, surv1=NA, surv1.sd=NA, surv0=NA, surv0.sd=NA)
   for (i in seq_along(df.TGT$time)) {
     tgt.surv1 <- df.TGT$surv1[i]
@@ -599,7 +645,8 @@ POOL_IVW <- function(data,
     df.IVW$surv0.sd[i] <- sqrt(1 / w.var0)
   }
   
-  #### Simple pooling (POOL) ####
+  #### Simple pooled estimator ####
+  ### Fit the survival estimator to all regions jointly without adaptive source weighting.
   A <- data[, trt.name]
   Y <- data[, time.var]
   Delta <- data[, event]
@@ -621,7 +668,7 @@ POOL_IVW <- function(data,
                         family=binomial(), SL.library=prop.SL.library)
     g.hats=predict(ps.fit, X[pred.ind, ])$pred
     
-    # propensity score of the target site R=0
+    # propensity score of the target site
     eta0.fit=SuperLearner(Y=R[train.ind], X=X[train.ind,], 
                           family=binomial(), SL.library=prop.SL.library)
     eta0.hats=predict(eta0.fit, X[pred.ind, ])$pred

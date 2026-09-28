@@ -1,3 +1,19 @@
+# ------------------------------------------------------------
+# Extend the target-only, CCOD, and federated estimators to
+# survival difference, survival ratio, and RMST contrasts.
+#
+# Inputs:
+#   site              : numeric site indicator, with site 0 as the target
+#   eval.times        : evaluation-time grid
+#   IF.*, S.*, Aug.*  : influence-function, survival-prediction, and
+#                       augmentation quantities from TrtSurvCurves()
+#   ind.R1.ccod       : indices corresponding to target observations
+#   s                 : random seed
+#
+# Output:
+#   target-only, CCOD, and FED estimates and standard errors for
+#   survival difference, survival ratio, and RMST.
+# ------------------------------------------------------------
 FuseSurv_Extend <- function(site,
                             eval.times,
                             IF.00, IF.01,
@@ -16,7 +32,7 @@ FuseSurv_Extend <- function(site,
   ## ~~~~~~ Target-only and CCOD estimates for RD and RMST ~~~~~~ ##
   ##################################################################
   
-  ### Risk difference
+  ### Survival difference
   n0 <- nrow(IF.00)
   n.all <- nrow(IF.CCOD.0)
   prop.R1 <- n0/n.all
@@ -93,10 +109,12 @@ FuseSurv_Extend <- function(site,
   df.RMST.diff.CCOD <- data.frame(time.max=max(eval.times), RMST=RMST.diff.CCOD, sd=RMST.diff.CCOD.sd)
   
   ##################################################################
-  ## ~~~~~~ Federated weighting estimate for RD, RR, RMST ~~~~~~~ ##
+  ## ~~~~~ Federated weighting estimate for SD, SR and RMST ~~~~~ ##
   ##################################################################
   
   ### Survival difference
+  # Construct target-source IF contrasts and discrepancy terms used
+  # for data-adaptive federated weighting.
   N.time <- length(eval.times)
   Aug.TGT.mean <- Aug.01.mean-Aug.00.mean
   Aug.R.mean <- Aug.R1.mean-Aug.R0.mean
@@ -114,10 +132,12 @@ FuseSurv_Extend <- function(site,
       chi.RD[i,r] <- Aug.TGT.mean[i]-Aug.R.mean[i,r]
       augdiff.RD[i,r] <- Aug.TGT.mean[i]-Aug.R.mean.sour[i,r]
     } 
+    
+    # Estimate nonnegative adaptive source weights using penalized regression.
     cv.fit=try(cv.glmnet(x=IF.RD.diff, y=IF.TGT.RD.center))
     if(class(cv.fit)[1]!="try-error") {
       fit0=try(glmnet(x=IF.RD.diff, y=IF.TGT.RD.center, 
-                      penalty.factor=chi.RD[i,]^2,
+                      penalty.factor=augdiff.RD[i,]^2,
                       intercept=FALSE,
                       alpha=1,
                       lambda=cv.fit$lambda.1se,
@@ -129,7 +149,7 @@ FuseSurv_Extend <- function(site,
   } 
   wt.RD.tgt <- 1-apply(wt.RD,1,sum)
   RD.FED <- apply(augdiff.RD*wt.RD, 1, sum) + RD.TGT
-  all.var <- (apply(IF.TGT.RD,2,var)*(wt.RD.tgt^2+2*wt.RD.tgt*(1-wt.RD.tgt)) + 
+  all.var <- (apply(IF.TGT.RD,2,var)*(wt.RD.tgt^2+4*wt.RD.tgt*(1-wt.RD.tgt)) + 
                 apply(S.01-S.00,2,var)*(1-wt.RD.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var <- all.var + apply(IF.R1[[k]]-IF.R0[[k]], 2, var)*wt.RD[,k]^2 / n.site[k+1]
@@ -137,8 +157,9 @@ FuseSurv_Extend <- function(site,
   RD.FED.sd <- sqrt(all.var) 
   df.RD.FED <- data.frame(time=eval.times, RD=RD.FED, sd=RD.FED.sd)
   
-  
   ### Survival ratio
+  # Construct target-source IF contrasts and discrepancy terms used
+  # for data-adaptive federated weighting.
   N.time <- length(eval.times)
   Aug.SR.TGT.mean <- (Aug.01.mean/S0_hat) - Aug.00.mean*(S1_hat/S0_hat^2)
   Aug.SR.R.mean <- sweep(Aug.R1.mean,1,1/S0_hat,`*`)-sweep(Aug.R0.mean,1,S1_hat/(S0_hat^2),`*`)
@@ -156,10 +177,12 @@ FuseSurv_Extend <- function(site,
       chi.SR[i,r] <- Aug.SR.TGT.mean[i]-Aug.SR.R.mean[i,r]
       augdiff.SR[i,r] <- Aug.SR.TGT.mean[i]-Aug.SR.R.mean.sour[i,r]
     } 
+    
+    # Estimate nonnegative adaptive source weights using penalized regression.
     cv.fit=try(cv.glmnet(x=IF.SR.diff, y=IF.TGT.SR.center))
     if(class(cv.fit)[1]!="try-error") {
       fit0=try(glmnet(x=IF.SR.diff, y=IF.TGT.SR.center, 
-                      penalty.factor=chi.SR[i,]^2,
+                      penalty.factor=augdiff.SR[i,]^2,
                       intercept=FALSE,
                       alpha=1,
                       lambda=cv.fit$lambda.1se,
@@ -171,7 +194,7 @@ FuseSurv_Extend <- function(site,
   } 
   wt.SR.tgt <- 1-apply(wt.SR,1,sum)
   SR.FED <- apply(augdiff.SR*wt.SR, 1, sum) + SR.TGT
-  all.var <- (apply(IF.TGT.SR,2,var)*(wt.SR.tgt^2+2*wt.SR.tgt*(1-wt.SR.tgt)) + 
+  all.var <- (apply(IF.TGT.SR,2,var)*(wt.SR.tgt^2+4*wt.SR.tgt*(1-wt.SR.tgt)) + 
                 apply(sweep(Aug.R1.mean,1,1/S0_hat,`*`)-sweep(Aug.R0.mean,1,S1_hat/(S0_hat^2),`*`),2,var)*(1-wt.SR.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var <- all.var + apply(IF.R1[[k]]-IF.R0[[k]], 2, var)*wt.SR[,k]^2 / n.site[k+1]
@@ -179,8 +202,9 @@ FuseSurv_Extend <- function(site,
   SR.FED.sd <- sqrt(all.var) 
   df.SR.FED <- data.frame(time=eval.times, SR=SR.FED, sd=SR.FED.sd)
   
-  
   ### Restrict mean survival times
+  # Aggregate influence-function and augmentation quantities over time
+  # to construct arm-specific RMSTs and the RMST difference.
   Aug.RMST.0.TGT.mean <- sum(Aug.00.mean*dt)
   Aug.RMST.1.TGT.mean <- sum(Aug.01.mean*dt)
   Aug.RMST.0.R.mean <- t(t(Aug.R0.mean) %*% dt)
@@ -213,10 +237,11 @@ FuseSurv_Extend <- function(site,
   IF.TGT.RMST.center <- IF.TGT.RMST.1.center - IF.TGT.RMST.0.center
   IF.RMST.diff <- IF.RMST.1.diff - IF.RMST.0.diff
   
+  # Estimate nonnegative adaptive source weights using penalized regression.
   cv.fit0=try(cv.glmnet(x=IF.RMST.0.diff, y=IF.TGT.RMST.0.center))
   if(class(cv.fit0)[1]!="try-error") {
     fit0=try(glmnet(x=IF.RMST.0.diff, y=IF.TGT.RMST.0.center, 
-                    penalty.factor=chi.RMST.0^2,
+                    penalty.factor=augdiff.RMST.0^2,
                     intercept=FALSE,
                     alpha=1,
                     lambda=cv.fit0$lambda.1se,
@@ -229,7 +254,7 @@ FuseSurv_Extend <- function(site,
   cv.fit1=try(cv.glmnet(x=IF.RMST.1.diff, y=IF.TGT.RMST.1.center))
   if(class(cv.fit1)[1]!="try-error") {
     fit1=try(glmnet(x=IF.RMST.1.diff, y=IF.TGT.RMST.1.center, 
-                    penalty.factor=chi.RMST.1^2,
+                    penalty.factor=augdiff.RMST.1^2,
                     intercept=FALSE,
                     alpha=1,
                     lambda=cv.fit1$lambda.1se,
@@ -242,12 +267,12 @@ FuseSurv_Extend <- function(site,
   cv.fit=try(cv.glmnet(x=IF.RMST.diff, y=IF.TGT.RMST.center))
   if(class(cv.fit)[1]!="try-error") {
     fit=try(glmnet(x=IF.RMST.diff, y=IF.TGT.RMST.center, 
-                    penalty.factor=chi.RMST^2,
-                    intercept=FALSE,
-                    alpha=1,
-                    lambda=cv.fit$lambda.1se,
-                    lower.limits=0,
-                    upper.limits=1))
+                   penalty.factor=augdiff.RMST^2,
+                   intercept=FALSE,
+                   alpha=1,
+                   lambda=cv.fit$lambda.1se,
+                   lower.limits=0,
+                   upper.limits=1))
     if(class(fit)[1]!="try-error") { 
       wt.RMST=coef(fit, s=cv.fit$lambda.1se)[-1] } else { wt.RMST=rep(0, K-1) }
   } else { wt.RMST=rep(0, K-1) }
@@ -260,11 +285,11 @@ FuseSurv_Extend <- function(site,
   RMST.1.FED <- sum(augdiff.RMST.1*wt.RMST.1) + RMST.1.TGT
   RMST.diff.FED <- sum(augdiff.RMST*wt.RMST) + RMST.diff.TGT
   
-  all.var0 <- (var(IF.TGT.RMST.0)*(wt.RMST.0.tgt^2+2*wt.RMST.0.tgt*(1-wt.RMST.0.tgt)) +
-                var(S.00%*%dt)*(1-wt.RMST.0.tgt)^2) / n.site[1] 
-  all.var1 <- (var(IF.TGT.RMST.1)*(wt.RMST.1.tgt^2+2*wt.RMST.1.tgt*(1-wt.RMST.1.tgt)) +
-                var(S.01%*%dt)*(1-wt.RMST.1.tgt)^2) / n.site[1] 
-  all.var <- (var(IF.TGT.RMST.diff)*(wt.RMST.tgt^2+2*wt.RMST.tgt*(1-wt.RMST.tgt)) +
+  all.var0 <- (var(IF.TGT.RMST.0)*(wt.RMST.0.tgt^2+4*wt.RMST.0.tgt*(1-wt.RMST.0.tgt)) +
+                 var(S.00%*%dt)*(1-wt.RMST.0.tgt)^2) / n.site[1] 
+  all.var1 <- (var(IF.TGT.RMST.1)*(wt.RMST.1.tgt^2+4*wt.RMST.1.tgt*(1-wt.RMST.1.tgt)) +
+                 var(S.01%*%dt)*(1-wt.RMST.1.tgt)^2) / n.site[1] 
+  all.var <- (var(IF.TGT.RMST.diff)*(wt.RMST.tgt^2+4*wt.RMST.tgt*(1-wt.RMST.tgt)) +
                 var((S.01-S.00)%*%dt)*(1-wt.RMST.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var0 <- all.var0 + var(IF.R0[[k]]%*%dt)*wt.RMST.0[k]^2 / n.site[k+1]
@@ -279,6 +304,7 @@ FuseSurv_Extend <- function(site,
   df.RMST.1.FED <- data.frame(time.max=max(eval.times), RMST=RMST.1.FED, sd=RMST.1.FED.sd)
   df.RMST.diff.FED <- data.frame(time.max=max(eval.times), RMST=RMST.diff.FED, sd=RMST.diff.FED.sd)
   
+  # Return estimates for all three contrasts under TGT, CCOD, and FED.
   return(list(df.RD.TGT=df.RD.TGT, 
               df.RD.CCOD=df.RD.CCOD, 
               df.RD.FED=df.RD.FED,

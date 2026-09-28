@@ -1,10 +1,10 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for AMP Data Analysis: Part II
-### --- This file reproduces Figures A.4, Tables A.1 and A.2 in Online
-### --- Supplemental Material A
+### --- This script reproduces Figure A.4 and Tables A.7--A.8 in
+### --- Online Supplemental Material Appendix A.
 ### ----------------------------------------------------------------------------
 
-### Packages and data pre-processing
+### Packages and data preprocessing
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
@@ -19,7 +19,8 @@ library(survival)
 source("TrtSurvCurves.R")
 source("EIFestimates.R")
 
-dat <- read.csv("amp_survival.csv")
+### Read the AMP trials dataset and construct the analysis variables.
+dat <- read.csv("amp_survival_Liuetal2026.csv")
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
@@ -39,6 +40,7 @@ dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
 ### ----------------------------------------------------------------------------
 ### Reproducibility 1: Figure A.4 in Supplement A
 ### ----------------------------------------------------------------------------
+### Plot treatment-specific survival curves and pointwise 95% confidence intervals.
 plot_survival_CI <- function(
     df, 
     time_col           ="time",
@@ -72,6 +74,7 @@ plot_survival_CI <- function(
     theme_minimal()
 }
 
+### Plot the estimated federated weights over time for each analytical region.
 plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) {
   df1 <- results.list$weights[,1:4] %>% as.data.frame()
   df0 <- results.list$weights[,5:8] %>% as.data.frame()
@@ -111,7 +114,8 @@ plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) 
   return(list(p.wt.1=p.wt.1, p.wt.0=p.wt.0))
 }
 
-### --- Run and save the results
+### Refit the SA-target analysis excluding the ML risk score from the covariate set
+### as a sensitivity analysis.
 result.SA <- TrtSurvCurves(data=dat.hiv,
                            covar.name=c("age","bweight"),
                            tgt.name="South Africa",
@@ -128,6 +132,7 @@ result.SA.naive <- POOL_IVW(data=dat.hiv,
                             s=2388)
 save(file="result_main_SA_2.Rdata", result.SA, result.SA.naive)
 
+### Fit the corresponding stratified clustered Cox comparator using the same reduced covariate set.
 fit_cluster_cox <- coxph(
   Surv(Y, Delta) ~ A + age + bweight + strata(site),
   data = dat.hiv,
@@ -173,9 +178,10 @@ grid.arrange(p.wt.SA1, p.wt.SA0, ncol=2)
 dev.off()
 
 ### ----------------------------------------------------------------------------
-### Reproducibility 2: Tables A.1 and A.2 in Supplement A
+### Reproducibility 2: Tables A.7 and A.8 in Supplement A
 ### ----------------------------------------------------------------------------
-### --- Run results
+### Compute survival difference, survival ratio, and RMST contrasts
+### for the reduced-covariate sensitivity analysis.
 source("Extends.R")
 load("result_main_SA_2.Rdata")
 extend.results <- NULL
@@ -215,6 +221,7 @@ df.SR.TGT  <- extend.results$df.SR.TGT [extend.results$df.SR.TGT$time %in% time.
 df.SR.FED  <- extend.results$df.SR.FED [extend.results$df.SR.FED$time %in% time.sel, ]
 df.SR.CCOD <- extend.results$df.SR.CCOD[extend.results$df.SR.CCOD$time %in% time.sel, ]
 
+### Compute two-sided Wald p-values for the reported causal contrasts.
 df.RD.TGT$pval  <- 2 * pnorm(-abs(df.RD.TGT$RD  / df.RD.TGT$sd))
 df.RD.FED$pval  <- 2 * pnorm(-abs(df.RD.FED$RD  / df.RD.FED$sd))
 df.RD.CCOD$pval <- 2 * pnorm(-abs(df.RD.CCOD$RD / df.RD.CCOD$sd))
@@ -231,6 +238,7 @@ extend.results$df.RMST.1.TGT$pval  <- NA
 extend.results$df.RMST.1.FED$pval  <- NA
 extend.results$df.RMST.1.CCOD$pval <- NA
 
+### Compute two-sided Wald p-values for the reported causal contrasts.
 extend.results$df.RMST.diff.TGT$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.TGT$RMST  / extend.results$df.RMST.diff.TGT$sd))
 extend.results$df.RMST.diff.FED$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.FED$RMST  / extend.results$df.RMST.diff.FED$sd))
 extend.results$df.RMST.diff.CCOD$pval <- 2 * pnorm(-abs(extend.results$df.RMST.diff.CCOD$RMST / extend.results$df.RMST.diff.CCOD$sd))
@@ -239,6 +247,7 @@ fmt_num <- function(x, digits) sprintf(paste0("%.", digits, "f"), x)
 fmt_ci <- function(est, se, digits) paste0("(", fmt_num(est - 1.96 * se, digits), ", ", fmt_num(est + 1.96 * se, digits), ")")
 fmt_p <- function(p) ifelse(is.na(p), "--", sprintf("%.3f", p))
 
+### Format survival difference and survival ratio results for Table A.7.
 make_rd_sr_rows <- function(rd.list, sr.list, time.sel=c(148,330,512)) {
   methods <- c("TGT", "FED", "CCOD")
   do.call(rbind, lapply(time.sel, function(day) {
@@ -265,6 +274,7 @@ tab.A1 <- make_rd_sr_rows(
   time.sel = time.sel
 )
 
+### Format arm-specific RMST and RMST-difference results for Table A.8.
 make_rmst_rows <- function(df0.list, df1.list, dfdiff.list) {
   methods <- c("TGT", "FED", "CCOD")
   bind_block <- function(label, dfs, show_p=FALSE) {
@@ -293,14 +303,8 @@ tab.A2 <- make_rmst_rows(
   dfdiff.list = list(TGT=extend.results$df.RMST.diff.TGT, FED=extend.results$df.RMST.diff.FED, CCOD=extend.results$df.RMST.diff.CCOD)
 )
 
-### --- Print Table A.1
+### --- Print Table A.7
 print(tab.A1, row.names = FALSE)
-# xtable(tab.A1, align = c("r","r","r","c","c","c","c","c","c"),
-#        caption = "Estimated risk RD and SR at days 148, 330, and 512.",
-#        label = "tab:RD-AMP-supp")
 
-### --- Print Table A.2
+### --- Print Table A.8
 print(tab.A2, row.names = FALSE)
-# xtable(tab.A2, align = c("r","l","r","c","c","c","c"),
-#        caption = "Estimated RMST by treatment group and RMST difference up to day 601.",
-#        label = "tab:RMST-AMP-supp")

@@ -1,8 +1,9 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for AMP Data Analysis: Part III
-### --- This file reproduces Figures 3 and 4 in Section 5
+### --- This script reproduces Figures 3 and 4 in main text Section 5.
 ### ----------------------------------------------------------------------------
-### --- R packages
+
+### --- Load required R packages
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
@@ -18,7 +19,8 @@ library(cobalt)
 library(randomForestSRC)
 library(cowplot)
 
-dat <- read.csv("amp_survival.csv")
+### Read the AMP trials dataset and construct the analysis variables.
+dat <- read.csv("amp_survival_Liuetal2026.csv")
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
@@ -50,12 +52,14 @@ X.ps <- dat.hiv[, bal.vars, drop = FALSE]
 tgt.name <- "SA"
 site.cols <- c("SA" = "#E41A1C", "OA" = "#377EB8", "BP" = "#4DAF4A", "US" = "#984EA3")
 
+### Construct inverse-probability treatment weights from estimated propensity scores.
 make_ate_wt <- function(ps, A, eps = 0.01) {
   ps <- pmin(pmax(ps, eps), 1 - eps)
   wt <- ifelse(A == 1, 1 / ps, 1 / (1 - ps))
   return(list(ps = ps, wt = wt))
 }
 
+### Custom SuperLearner wrapper for a logistic regression including pairwise interactions.
 SL.glm.interaction <- function(Y, X, newX, family, obsWeights, ...) {
   fit <- glm(
     Y ~ (age + score + bweight)^2,
@@ -74,6 +78,9 @@ predict.SL.glm.interaction <- function(object, newdata, ...) {
   predict(object$object, newdata = newdata, type = "response")
 }
 
+### Estimate propensity scores separately within each analytical region using
+### GLM, interaction GLM, LASSO, or SuperLearner ensemble specifications.
+### Returns estimated propensity scores and corresponding ATE weights.
 fit_sitewise_ps <- function(dat, method = c("GLM", "GLM.interaction", "LASSO", "Ensemble.All", "Ensemble.GLM"),
                             bal.vars = c("age", "score", "bweight"), eps = 0.01) {
   method <- match.arg(method)
@@ -142,6 +149,7 @@ fit_sitewise_ps <- function(dat, method = c("GLM", "GLM.interaction", "LASSO", "
   return(list(ps = ps, wt = wt))
 }
 
+### Fit the candidate propensity-score specifications used in Figure 3.
 ps.glm.out      <- fit_sitewise_ps(dat.hiv, method = "GLM",             bal.vars = bal.vars)
 ps.glm.int.out  <- fit_sitewise_ps(dat.hiv, method = "GLM.interaction", bal.vars = bal.vars)
 ps.lasso.out    <- fit_sitewise_ps(dat.hiv, method = "LASSO",           bal.vars = bal.vars)
@@ -167,6 +175,7 @@ wt.list <- data.frame(
   Ensemble.GLM = wt.ens.small
 )
 
+### Compare covariate balance across the candidate propensity-score models.
 bal.all <- bal.tab(
   x = X.ps,
   treat = dat.hiv$A,
@@ -221,6 +230,7 @@ ps.site.long$Method <- factor(
   levels = c("GLM", "GLM.interaction", "LASSO", "Ensemble.All", "Ensemble.GLM")
 )
 
+### Compare site-specific propensity-score distributions by treatment group.
 p.ps.hist.site <- ggplot(ps.site.long, aes(x = PS, fill = A)) +
   geom_histogram(
     bins = 20,
@@ -251,12 +261,20 @@ p.ps.hist.site <- ggplot(ps.site.long, aes(x = PS, fill = A)) +
     legend.text = element_text(size = 8)
   )
 
+
+### --- Nuisance-model and cross-region overlap diagnostics for Figure 4
+
+### Evaluate event-survival, censoring-survival, and density-ratio diagnostics
+### at day 600, immediately before the end of the analysis horizon.
+
 fit.times <- 1:601
 t.check   <- 600
 t.ind     <- match(t.check, fit.times)
 n.folds   <- 5
 dat.use <- dat.hiv %>% mutate(id = 1:n())
 dat0 <- dat.use %>% filter(site == tgt.name)
+
+### Fit treatment-specific survival models in the target region.
 surv.fit.0.tgt <- survSuperLearner(
   time = dat0$Y[dat0$A == 0],
   event = dat0$Delta[dat0$A == 0],
@@ -275,6 +293,7 @@ surv.fit.1.tgt <- survSuperLearner(
   cens.SL.library  = c("survSL.km", "survSL.coxph", "survSL.rfsrc")
 )
 
+### Obtain cross-fitted target-region survival and censoring predictions.
 set.seed(12345)
 nuis.list <- list()
 folds.tgt <- createFolds(1:nrow(dat0), k = n.folds, list = TRUE)
@@ -318,6 +337,9 @@ for (i in seq_along(folds.tgt)) {
   )
 }
 
+### For each source region, estimate the source-to-target density ratio,
+### predict event survival using the target-region model, and estimate
+### censoring survival using source-region data.
 source.sites <- setdiff(levels(dat.use$site), tgt.name)
 X0 <- as.matrix(dat0[, bal.vars, drop = FALSE])
 
@@ -378,6 +400,8 @@ for (s in source.sites) {
   }
 }
 
+### Summarize lower-tail survival/censoring predictions and upper-tail
+### density-ratio estimates by region.
 nuis.df <- bind_rows(nuis.list)
 nuis.summary <- nuis.df %>%
   group_by(site) %>%
@@ -396,6 +420,7 @@ nuis.summary <- nuis.df %>%
   )
 print(nuis.summary)
 
+### Plot event-survival diagnostics under A=0 and A=1.
 surv.A0 <- ggplot(nuis.df, aes(x = S0_end, fill = site)) +
   geom_histogram(
     bins = 30,
@@ -440,6 +465,7 @@ surv.A1 <- ggplot(nuis.df, aes(x = S1_end, fill = site)) +
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
   )
 
+### Plot censoring-survival diagnostics under A=0 and A=1.
 cens.A0 <- ggplot(nuis.df, aes(x = G0_end, fill = site)) +
   geom_histogram(
     bins = 30,
@@ -481,6 +507,7 @@ cens.A1 <- ggplot(nuis.df, aes(x = G1_end, fill = site)) +
   theme(plot.title = element_text(size = 10, hjust = 0.5),
         panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8))
 
+### Plot source-to-target density-ratio diagnostics.
 omega.df <- nuis.df %>% filter(site != tgt.name)
 p.omega <- ggplot(omega.df, aes(x = omega, fill = site)) +
   geom_histogram(bins = 30, alpha = 0.60, color = "black",

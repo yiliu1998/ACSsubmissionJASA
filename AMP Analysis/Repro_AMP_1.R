@@ -1,8 +1,8 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for AMP Data Analysis: Part I
-### --- This file reproduces Tables 1, and 3 in the main text,
-### --- Figures 1 and 5 in the main text and Figures A.1, A.2 and A.3 in Online
-### --- Supplemental Material A
+### --- This script reproduces Table 1--3 in the main text,
+### --- Figures 1 and 5 in the main text, and Figures A.1--A.3 and
+### --- Tables A.1--A.6 in Online Supplemental Material Appendix A.
 ### ----------------------------------------------------------------------------
 
 ### --- Packages and data pre-processing
@@ -20,7 +20,8 @@ library(survival)
 library(survminer)
 library(EValue)
 
-dat <- read.csv("amp_survival.csv")
+### Read the AMP trials dataset and construct the analysis variables.
+dat <- read.csv("amp_survival_Liuetal2026.csv")
 Delta <- dat$hiv1event
 Y <- dat$hiv1survday
 A <- as.numeric(dat$rx_pool == "T1+T2")
@@ -99,6 +100,10 @@ make_amp_table1(dat.hiv)
 ### ----------------------------------------------------------------------------
 ### Reproducibility 2: Sensitivity analysis for censoring in Section 5.1
 ### ----------------------------------------------------------------------------
+
+### Compute the E-value reported in Section 5.1.
+### Calibrate the E-value by examining associations of standardized observed
+### covariates with the HIV-1 outcome and with censoring.
 model <- coxph(Surv(Y, Delta)~A+age+score+bweight, data=dat.hiv)
 summary_fit <- summary(model)$conf.int
 HR <- as.numeric(summary_fit["A", "exp(coef)"])
@@ -130,7 +135,7 @@ fit.censor <- coxph(
 
 summary(fit.censor)
 
-## Extract HRs and CIs
+### Extract hazard ratios and 95% confidence intervals from a Cox model.
 get_hr_table <- function(fit, model_name) {
   s <- summary(fit)
   out <- data.frame(
@@ -152,6 +157,10 @@ print(tab.calib)
 ### ----------------------------------------------------------------------------
 ### Reproducibility 3: Figure 5 in Section 5.2
 ### ----------------------------------------------------------------------------
+
+### Estimate treatment-specific survival curves with SA as the target region.
+### TGT, FED, and CCOD are obtained from TrtSurvCurves(), while POOL and IVW
+### are obtained from POOL_IVW().
 source("TrtSurvCurves.R")
 source("EIFestimates.R")
 
@@ -172,6 +181,7 @@ result.SA.naive <- POOL_IVW(data=dat.hiv,
                             s=2388)
 save(file="result_main_SA.Rdata", result.SA, result.SA.naive)
 
+### Fit the stratified clustered Cox model used as an additional comparator.
 fit_cluster_cox <- coxph(
   Surv(Y, Delta) ~ A + age + score + bweight + strata(site),
   data = dat.hiv,
@@ -196,6 +206,7 @@ df.cluster <- data.frame(
   surv0.sd = se_list[[1]]
 )
 
+### Plot treatment-specific survival curves and pointwise 95% confidence intervals.
 plot_survival_CI <- function(
     df, 
     time_col           ="time",
@@ -229,9 +240,10 @@ plot_survival_CI <- function(
     theme_minimal()
 }
 
+### Plot the estimated federated weights over time for each analytical region.
 plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) {
-  df1 <- results.list$weights[,1:4] %>% as.data.frame()
-  df0 <- results.list$weights[,5:8] %>% as.data.frame()
+  df0 <- results.list$weights[,1:4] %>% as.data.frame()
+  df1 <- results.list$weights[,5:8] %>% as.data.frame()
   df1$time <- seq_len(nrow(df1)) 
   df0$time <- seq_len(nrow(df0))
   colnames(df1) <- colnames(df0) <- c(site.names, "time")
@@ -334,146 +346,94 @@ df.cluster[df.cluster$time==513,5] / result.SA$df.TGT[513,5]
 ### ----------------------------------------------------------------------------
 ### Reproducibility 4: Numbers in Tables 2 and 3 in Section 5.2
 ### ----------------------------------------------------------------------------
-### --- Run results
 source("Extends.R")
-load("result_main_SA.Rdata")
-extend.results <- NULL
-zz <- file(tempfile(), open = "wt")
-sink(zz, type = "message")
-invisible(capture.output({
-  extend.results <- suppressWarnings(suppressMessages(
-    FuseSurv_Extend(eval.times=result.SA$eval.times,
-                    site=result.SA$site,
-                    IF.00=result.SA$IF.00,
-                    IF.01=result.SA$IF.01,
-                    S.00=result.SA$S.00, 
-                    S.01=result.SA$S.01,
-                    Aug.00.mean=result.SA$Aug.00.mean, 
-                    Aug.01.mean=result.SA$Aug.01.mean,
-                    Aug.R0.mean=result.SA$Aug.R0.mean, 
-                    Aug.R1.mean=result.SA$Aug.R1.mean,
-                    Aug.R0.mean.sour=result.SA$Aug.R0.mean.sour, 
-                    Aug.R1.mean.sour=result.SA$Aug.R1.mean.sour,
-                    IF.R0=result.SA$IF.R0, 
-                    IF.R1=result.SA$IF.R1, 
-                    IF.CCOD.0=result.SA$IF.CCOD.0, 
-                    IF.CCOD.1=result.SA$IF.CCOD.1,
-                    ind.R1.ccod=result.SA$ind.R1.ccod,
-                    s=1222)
-  ))
-}, type = "output"))
-sink(type = "message")
-close(zz)
-
 time.sel <- c(148, 330, 512)
-df.RD.TGT  <- extend.results$df.RD.TGT [extend.results$df.RD.TGT$time %in% time.sel, ]
-df.RD.FED  <- extend.results$df.RD.FED [extend.results$df.RD.FED$time %in% time.sel, ]
-df.RD.CCOD <- extend.results$df.RD.CCOD[extend.results$df.RD.CCOD$time %in% time.sel, ]
 
-df.SR.TGT  <- extend.results$df.SR.TGT [extend.results$df.SR.TGT$time %in% time.sel, ]
-df.SR.FED  <- extend.results$df.SR.FED [extend.results$df.SR.FED$time %in% time.sel, ]
-df.SR.CCOD <- extend.results$df.SR.CCOD[extend.results$df.SR.CCOD$time %in% time.sel, ]
+fmt_num <- function(x, d) sprintf(paste0("%.", d, "f"), x)
+fmt_ci  <- function(est, se, d) paste0("(", fmt_num(est-1.96*se,d), ", ", fmt_num(est+1.96*se,d), ")")
+fmt_p   <- function(p) sprintf("%.3f", p)
 
-df.RD.TGT$pval  <- 2 * pnorm(-abs(df.RD.TGT$RD  / df.RD.TGT$sd))
-df.RD.FED$pval  <- 2 * pnorm(-abs(df.RD.FED$RD  / df.RD.FED$sd))
-df.RD.CCOD$pval <- 2 * pnorm(-abs(df.RD.CCOD$RD / df.RD.CCOD$sd))
-
-df.SR.TGT$pval  <- 2 * pnorm(-abs((df.SR.TGT$SR  - 1) / df.SR.TGT$sd))
-df.SR.FED$pval  <- 2 * pnorm(-abs((df.SR.FED$SR  - 1) / df.SR.FED$sd))
-df.SR.CCOD$pval <- 2 * pnorm(-abs((df.SR.CCOD$SR - 1) / df.SR.CCOD$sd))
-
-p_rmst_diff_tgt  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.TGT$RMST  / extend.results$df.RMST.diff.TGT$sd))
-p_rmst_diff_fed  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.FED$RMST  / extend.results$df.RMST.diff.FED$sd))
-p_rmst_diff_ccod <- 2 * pnorm(-abs(extend.results$df.RMST.diff.CCOD$RMST / extend.results$df.RMST.diff.CCOD$sd))
-
-extend.results$df.RMST.0.TGT$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.0.TGT$RMST  / extend.results$df.RMST.0.TGT$sd))
-extend.results$df.RMST.0.FED$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.0.FED$RMST  / extend.results$df.RMST.0.FED$sd))
-extend.results$df.RMST.0.CCOD$pval <- 2 * pnorm(-abs(extend.results$df.RMST.0.CCOD$RMST / extend.results$df.RMST.0.CCOD$sd))
-
-extend.results$df.RMST.1.TGT$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.1.TGT$RMST  / extend.results$df.RMST.1.TGT$sd))
-extend.results$df.RMST.1.FED$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.1.FED$RMST  / extend.results$df.RMST.1.FED$sd))
-extend.results$df.RMST.1.CCOD$pval <- 2 * pnorm(-abs(extend.results$df.RMST.1.CCOD$RMST / extend.results$df.RMST.1.CCOD$sd))
-
-extend.results$df.RMST.diff.TGT$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.TGT$RMST  / extend.results$df.RMST.diff.TGT$sd))
-extend.results$df.RMST.diff.FED$pval  <- 2 * pnorm(-abs(extend.results$df.RMST.diff.FED$RMST  / extend.results$df.RMST.diff.FED$sd))
-extend.results$df.RMST.diff.CCOD$pval <- 2 * pnorm(-abs(extend.results$df.RMST.diff.CCOD$RMST / extend.results$df.RMST.diff.CCOD$sd))
-
-fmt_num <- function(x, digits) sprintf(paste0("%.", digits, "f"), x)
-fmt_ci <- function(est, se, digits) paste0("(", fmt_num(est - 1.96 * se, digits), ", ", fmt_num(est + 1.96 * se, digits), ")")
-fmt_p <- function(p) sprintf("%.3f", p)
-
-make_rd_sr_rows <- function(rd.list, sr.list, time.sel=c(148,330,512)) {
-  methods <- c("TGT", "FED", "CCOD")
-  out <- lapply(seq_along(time.sel), function(i) {
-    day <- time.sel[i]
-    do.call(rbind, lapply(methods, function(m) {
-      rd <- rd.list[[m]][rd.list[[m]]$time == day, ]
-      sr <- sr.list[[m]][sr.list[[m]]$time == day, ]
-      data.frame(
-        Day = day, Method = m,
-        `RD Est. (95% CI)` = paste0(fmt_num(rd$RD, 3), " ", fmt_ci(rd$RD, rd$sd, 3)),
-        `SE(RD)` = fmt_num(rd$sd, 3),
-        `p-value_RD` = fmt_p(rd$pval),
-        `SR Est. (95% CI)` = paste0(fmt_num(sr$SR, 3), " ", fmt_ci(sr$SR, sr$sd, 3)),
-        `SE(SR)` = fmt_num(sr$sd, 3),
-        `p-value_SR` = fmt_p(sr$pval),
-        check.names = FALSE
-      )
-    }))
-  })
-  do.call(rbind, out)
-}
-
-tab.RD.SR <- make_rd_sr_rows(
-  rd.list = list(TGT=df.RD.TGT, FED=df.RD.FED, CCOD=df.RD.CCOD),
-  sr.list = list(TGT=df.SR.TGT, FED=df.SR.FED, CCOD=df.SR.CCOD),
-  time.sel = time.sel
-)
-
-make_rmst_rows <- function(df0.list, df1.list, dfdiff.list) {
-  methods <- c("TGT", "FED", "CCOD")
-  bind_block <- function(label, dfs, show_p=FALSE) {
-    do.call(rbind, lapply(methods, function(m) {
-      df <- dfs[[m]]
-      data.frame(
-        Group = label, Method = m,
-        `RMST Est.` = fmt_num(df$RMST, 2),
-        SE = fmt_num(df$sd, 2),
-        `95% CI` = fmt_ci(df$RMST, df$sd, 2),
-        `p-value` = if (show_p) fmt_p(df$pval) else "--",
-        check.names = FALSE
-      )
-    }))
+### Compute survival difference (SD), survival ratio (SR), and RMST summaries
+### from a fitted TrtSurvCurves object.
+### ----------------------------------------------------------------------------
+### Input:
+###   res      : fitted object returned by TrtSurvCurves()
+###   time.sel : evaluation days for SD and SR
+###
+### Output:
+###   formatted SD/SR and RMST tables, together with the underlying estimates.
+### ----------------------------------------------------------------------------
+get_contrasts <- function(res, time.sel=c(148,330,512), s=1222) {
+  
+  zz <- file(tempfile(), open="wt"); sink(zz, type="message")
+  
+  ### Obtain SD, SR, and RMST estimates using FuseSurv_Extend().
+  ext <- suppressWarnings(suppressMessages(FuseSurv_Extend(
+    eval.times=res$eval.times, site=res$site, IF.00=res$IF.00, IF.01=res$IF.01,
+    S.00=res$S.00, S.01=res$S.01, Aug.00.mean=res$Aug.00.mean, Aug.01.mean=res$Aug.01.mean,
+    Aug.R0.mean=res$Aug.R0.mean, Aug.R1.mean=res$Aug.R1.mean,
+    Aug.R0.mean.sour=res$Aug.R0.mean.sour, Aug.R1.mean.sour=res$Aug.R1.mean.sour,
+    IF.R0=res$IF.R0, IF.R1=res$IF.R1, IF.CCOD.0=res$IF.CCOD.0, IF.CCOD.1=res$IF.CCOD.1,
+    ind.R1.ccod=res$ind.R1.ccod, s=s)))
+  sink(type="message"); close(zz)
+  
+  methods <- c("TGT","FED","CCOD")
+  
+  SD <- lapply(methods, function(m) ext[[paste0("df.RD.",m)]][ext[[paste0("df.RD.",m)]]$time %in% time.sel,])
+  SR <- lapply(methods, function(m) ext[[paste0("df.SR.",m)]][ext[[paste0("df.SR.",m)]]$time %in% time.sel,])
+  names(SD) <- names(SR) <- methods
+  
+  ### Compute two-sided Wald p-values for the reported causal contrasts.
+  for(m in methods) {
+    SD[[m]]$pval <- 2*pnorm(-abs(SD[[m]]$RD/SD[[m]]$sd))
+    SR[[m]]$pval <- 2*pnorm(-abs((SR[[m]]$SR-1)/SR[[m]]$sd))
+    ext[[paste0("df.RMST.diff.",m)]]$pval <-
+      2*pnorm(-abs(ext[[paste0("df.RMST.diff.",m)]]$RMST/ext[[paste0("df.RMST.diff.",m)]]$sd))
   }
-  rbind(
-    bind_block("Control group", df0.list, show_p=FALSE),
-    bind_block("Treated group", df1.list, show_p=FALSE),
-    bind_block("RMST difference", dfdiff.list, show_p=TRUE)
-  )
+  
+  ### Format the estimates, standard errors, confidence intervals, and p-values
+  ### for presentation in Tables 2 and 3.
+  tab.SD.SR <- do.call(rbind, lapply(time.sel, function(day) do.call(rbind, lapply(methods, function(m) {
+    sd <- SD[[m]][SD[[m]]$time==day,]; sr <- SR[[m]][SR[[m]]$time==day,]
+    data.frame(
+      Day=day, Method=m,
+      `SD Est. (95% CI)`=paste0(fmt_num(sd$RD,3)," ",fmt_ci(sd$RD,sd$sd,3)),
+      `SE(SD)`=fmt_num(sd$sd,3), `p-value_SD`=fmt_p(sd$pval),
+      `SR Est. (95% CI)`=paste0(fmt_num(sr$SR,3)," ",fmt_ci(sr$SR,sr$sd,3)),
+      `SE(SR)`=fmt_num(sr$sd,3), `p-value_SR`=fmt_p(sr$pval), check.names=FALSE)
+  }))))
+  
+  rmst_block <- function(label, prefix, show.p=FALSE) do.call(rbind, lapply(methods, function(m) {
+    df <- ext[[paste0("df.RMST.",prefix,".",m)]]
+    data.frame(Group=label, Method=m, `RMST Est.`=fmt_num(df$RMST,2), SE=fmt_num(df$sd,2),
+               `95% CI`=fmt_ci(df$RMST,df$sd,2),
+               `p-value`=if(show.p) fmt_p(df$pval) else "--", check.names=FALSE)
+  }))
+  
+  tab.RMST <- rbind(rmst_block("Control group","0"), rmst_block("Treated group","1"),
+                    rmst_block("RMST difference","diff",TRUE))
+  
+  list(ext=ext, SD.SR=tab.SD.SR, RMST=tab.RMST)
 }
 
-tab.RMST <- make_rmst_rows(
-  df0.list = list(TGT=extend.results$df.RMST.0.TGT, FED=extend.results$df.RMST.0.FED, CCOD=extend.results$df.RMST.0.CCOD),
-  df1.list = list(TGT=extend.results$df.RMST.1.TGT, FED=extend.results$df.RMST.1.FED, CCOD=extend.results$df.RMST.1.CCOD),
-  dfdiff.list = list(TGT=extend.results$df.RMST.diff.TGT, FED=extend.results$df.RMST.diff.FED, CCOD=extend.results$df.RMST.diff.CCOD)
-)
+### --- SA target: Tables 2 and 3
+load("result_main_SA.Rdata")
+contrast.SA <- get_contrasts(result.SA)
 
-### --- Print Table 2 in Section 5
-print(tab.RD.SR, row.names = FALSE)
-# xtable(tab.RD.SR, align = c("r","r","r","c","c","c","c","c","c"),
-#        caption = "Estimated risk RD and SR at days 148, 330, and 512.",
-#        label = "tab:RD-AMP")
+tab.SD.SR <- contrast.SA$SD.SR
+tab.RMST  <- contrast.SA$RMST
 
-### --- Print Table 3 in Section 5
-print(tab.RMST, row.names = FALSE)
-# xtable(tab.RMST, align = c("r","l","r","c","c","c","c"),
-#        caption = "Estimated RMST by treatment group and RMST difference up to day 601.",
-#        label = "tab:RMST-AMP")
+print(tab.SD.SR, row.names=FALSE)
+print(tab.RMST, row.names=FALSE)
 
 ### ----------------------------------------------------------------------------
 ### Reproducibility 5: Figures A.1, A.2 and A.3 in Supplement A
 ### ----------------------------------------------------------------------------
-### --- Run and save results of the OA region
+
+### Repeat the treatment-specific survival analysis using OA, BP, and US
+### successively as the target region.
+
+### --- OA as the target region
 result.OA <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="African country other than South Africa",
                            prop.SL.library=c("SL.glm"),
@@ -535,7 +495,7 @@ pdf(file="AMP_OAwts.pdf", width=10, height=3.4)
 grid.arrange(p.wt.1, p.wt.0, ncol=2)
 dev.off()
 
-### --- Run and save results of the BP region
+### --- BP as the target region
 result.BP <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="Brazil or Peru",
                            prop.SL.library=c("SL.glm"),
@@ -588,7 +548,8 @@ pdf(file="AMP_BPwts.pdf", width=10, height=3.4)
 grid.arrange(p.wt.1, p.wt.0, ncol=2)
 dev.off()
 
-### --- Run and save results of the US region
+
+### --- US as the target region
 result.US <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="United States or Switzerland",
                            prop.SL.library=c("SL.glm"),
@@ -644,6 +605,10 @@ dev.off()
 ### ----------------------------------------------------------------------------
 ### Reproducibility 6: Figure 1 in Section 2
 ### ----------------------------------------------------------------------------
+
+### Combine the target-only survival curves from all four analytical regions
+### to reproduce Figure 1.
+
 load("result_main_SA.Rdata")
 plot_survival_CI(df=result.SA$df.TGT, 
                  color_treated="springgreen4", 
@@ -660,14 +625,42 @@ load("result_main_BP.Rdata")
 plot_survival_CI(df=result.BP$df.TGT, 
                  color_treated="springgreen4", 
                  color_control="springgreen", 
-                 fig.title="BP (men)") -> p.tgt.BP
+                 fig.title="BP (men, TG)") -> p.tgt.BP
 
 load("result_main_US.Rdata")
 plot_survival_CI(df=result.US$df.TGT, 
                  color_treated="springgreen4", 
                  color_control="springgreen", 
-                 fig.title="US (men)") -> p.tgt.US
+                 fig.title="US (men, TG)") -> p.tgt.US
 
 pdf("AMP_siteSurvs.pdf", width=9, height=4.5)
 grid.arrange(p.tgt.SA, p.tgt.OA, p.tgt.BP, p.tgt.US, ncol=2)
 dev.off()
+
+
+### ----------------------------------------------------------------------------
+### Reproducibility 7: Causal contrasts for OA, BP, and US target regions
+### --- Tables A.1--A.6 in Web Appendix A
+### ----------------------------------------------------------------------------
+
+### Apply the same contrast function used for SA to each additional target region
+### to reproduce Tables A.1--A.6.
+
+load("result_main_OA.Rdata")
+contrast.OA <- get_contrasts(result.OA)
+load("result_main_BP.Rdata")
+contrast.BP <- get_contrasts(result.BP)
+load("result_main_US.Rdata")
+contrast.US <- get_contrasts(result.US)
+
+### --- Tables A.1 and A.2: OA
+print(contrast.OA$SD.SR, row.names=FALSE)
+print(contrast.OA$RMST, row.names=FALSE)
+
+### --- Tables A.3 and A.4: BP
+print(contrast.BP$SD.SR, row.names=FALSE)
+print(contrast.BP$RMST, row.names=FALSE)
+
+### --- Tables A.5 and A.6: US
+print(contrast.US$SD.SR, row.names=FALSE)
+print(contrast.US$RMST, row.names=FALSE)
