@@ -13,37 +13,95 @@ library(ggplot2)
 library(dplyr)
 library(RColorBrewer)
 
+# Number of Monte Carlo replicates included in the simulation summaries.
 M <- 500L
+
+# Evaluation times and normal critical value for 95% confidence intervals.
 t <- c(30, 60, 90)
 quant <- 1.96
+
+# Estimators and display order used throughout the figures.
 methods <- c("TGT", "IVW", "POOL", "CCOD", "FED", "CLCOX")
 method_levels <- c("FED", "TGT", "IVW", "POOL", "CCOD", "CLCOX")
+
+# Mapping between descriptive scenario labels and saved-result file names.
 case_files <- c("Homogeneous" = "homo", "Covariate Shift" = "diffX", "Outcome Shift" = "diffT", "Censoring Shift" = "diffC", "All Shift" = "diffAll")
 case_levels <- names(case_files)
+
+# Colors used to distinguish estimators in the bias boxplots.
 plot_colors <- c(brewer.pal(11, "Paired")[c(1, 3, 7, 8, 10)], "plum3")
 
+# Load the true target-site survival probabilities used to compute simulation metrics.
 load("truth.Rdata")
 
+
+# -----------------------------------------------------------------------------
+# Load all simulation results for one sample-size/overlap setting.
+#
+# Input:
+#   suffix : suffix identifying the saved simulation setting
+#            ("s", "l", "l2", or "limO")
+#
+# Output:
+#   a list containing:
+#     results : simulation results for the five distribution-shift scenarios
+#     clcox   : corresponding clustered Cox benchmark results
+# -----------------------------------------------------------------------------
 load_result_set <- function(suffix) {
   out <- list()
+  
+  # Load the main estimator results for each distribution-shift scenario.
   for (case_key in case_files) {
     env <- new.env(); load(paste0("Res_", case_key, "_", suffix, ".Rdata"), envir = env)
     out[[case_key]] <- env$results
   }
+  
+  # Load clustered Cox results for the same simulation setting.
   env <- new.env(); load(paste0("Res_CLCOX_", suffix, ".Rdata"), envir = env)
+  
   list(results = out, clcox = list(homo = env$result.CLCOX.homo, diffX = env$result.CLCOX.diffX, diffT = env$result.CLCOX.diffT, diffC = env$result.CLCOX.diffC, diffAll = env$result.CLCOX.diffAll))
 }
 
+
+# -----------------------------------------------------------------------------
+# Extract one estimator's results from one Monte Carlo replicate.
+#
+# Inputs:
+#   datlist : simulation-result list for the main estimators
+#   coxlist : simulation-result list for the clustered Cox estimator
+#   j       : Monte Carlo replicate index
+#   method  : estimator name
+#
+# Output:
+#   data frame containing treatment-specific survival estimates and standard
+#   errors at the evaluation times
+# -----------------------------------------------------------------------------
 get_df <- function(datlist, coxlist, j, method) {
   if (method == "CLCOX") {
     time_use <- datlist[[j]]$df.TGT$time
     df <- coxlist[[j]]$df.CLCOX
+    
+    # Match clustered Cox results to the same evaluation times used by TGT.
     df[match(time_use, df$time), ]
   } else {
     datlist[[j]][[paste0("df.", method)]]
   }
 }
 
+
+# -----------------------------------------------------------------------------
+# Convert results from one simulation scenario into long format.
+#
+# Inputs:
+#   datlist   : simulation-result list for the main estimators
+#   coxlist   : clustered Cox simulation results
+#   case_name : descriptive name of the simulation scenario
+#   M         : number of Monte Carlo replicates
+#
+# Output:
+#   long-format data frame containing survival estimates and standard errors
+#   for all estimators, treatments, time points, and replicates
+# -----------------------------------------------------------------------------
 make_long_estimates <- function(datlist, coxlist, case_name, M = 500L) {
   bind_rows(lapply(methods, function(method) {
     bind_rows(lapply(seq_len(M), function(j) {
@@ -61,8 +119,20 @@ make_long_estimates <- function(datlist, coxlist, case_name, M = 500L) {
   }))
 }
 
+
+# -----------------------------------------------------------------------------
+# Combine all five distribution-shift scenarios for one simulation setting.
+#
+# Inputs:
+#   suffix : saved-result suffix identifying the simulation setting
+#   M      : number of Monte Carlo replicates
+#
+# Output:
+#   long-format data frame with ordered Case and Method factors
+# -----------------------------------------------------------------------------
 make_suffix_df <- function(suffix, M = 500L) {
   obj <- load_result_set(suffix)
+  
   bind_rows(lapply(names(case_files), function(case_name) {
     key <- unname(case_files[[case_name]])
     make_long_estimates(obj$results[[key]], obj$clcox[[key]], case_name, M)
@@ -73,6 +143,17 @@ make_suffix_df <- function(suffix, M = 500L) {
     )
 }
 
+
+# -----------------------------------------------------------------------------
+# Construct replicate-level bias values for plotting.
+#
+# Input:
+#   df : long-format simulation estimates returned by make_suffix_df()
+#
+# Output:
+#   data frame containing absolute bias for treated and control survival
+#   probabilities in each replicate
+# -----------------------------------------------------------------------------
 make_bias_df <- function(df) {
   bind_rows(
     df %>% mutate(Bias = est1 - rep(S1.true, length.out = n()), Treatment = "Treated") %>% select(Bias, Case, Method, time, Treatment),
@@ -80,37 +161,91 @@ make_bias_df <- function(df) {
   ) %>% mutate(Treatment = factor(Treatment, levels = c("Treated", "Control")))
 }
 
+
+# -----------------------------------------------------------------------------
+# Compute summary simulation performance metrics.
+#
+# Inputs:
+#   df     : long-format simulation estimates
+#   metric : one of:
+#              "relbias" = absolute relative bias (%)
+#              "rrmse"   = MSE relative to the target-only estimator
+#              "cp"      = empirical 95% confidence-interval coverage (%)
+#              "ciw"     = median 95% confidence-interval width
+#
+# Output:
+#   summarized data frame containing one metric value for each combination
+#   of case, method, treatment group, and evaluation time
+# -----------------------------------------------------------------------------
 make_summary_df <- function(df, metric = c("relbias", "rrmse", "cp", "ciw")) {
   metric <- match.arg(metric)
+  
+  # Convert treated and control estimates to a common long format and attach truth values.
   long <- bind_rows(
     df %>% mutate(Treatment = "Treated", est = est1, sd = sd1, truth = rep(S1.true, length.out = n())),
     df %>% mutate(Treatment = "Control", est = est0, sd = sd0, truth = rep(S0.true, length.out = n()))
   ) %>% mutate(Treatment = factor(Treatment, levels = c("Treated", "Control")))
   
+  # Absolute relative bias in percentage points.
   if (metric == "relbias") {
     long %>% group_by(Case, Method, Treatment, time) %>% summarize(Value = abs(mean((est - truth) / truth * 100, na.rm = TRUE)), .groups = "drop")
+    
+    # Relative MSE using TGT as the reference within each scenario/time/treatment.
   } else if (metric == "rrmse") {
     mse <- long %>% group_by(Case, Method, Treatment, time) %>% summarize(MSE = mean((est - truth)^2, na.rm = TRUE), .groups = "drop")
     tgt <- mse %>% filter(Method == "TGT") %>% select(Case, Treatment, time, MSE.TGT = MSE)
     mse %>% left_join(tgt, by = c("Case", "Treatment", "time")) %>% mutate(Value = MSE / MSE.TGT) %>% select(Case, Method, Treatment, time, Value)
+    
+    # Empirical coverage probability of nominal 95% Wald confidence intervals.
   } else if (metric == "cp") {
     long %>% group_by(Case, Method, Treatment, time) %>% summarize(Value = mean((truth < est + quant * sd) & (truth > est - quant * sd), na.rm = TRUE) * 100, .groups = "drop")
+    
+    # Median width of the nominal 95% Wald confidence intervals.
   } else {
     long %>% group_by(Case, Method, Treatment, time) %>% summarize(Value = median(2 * quant * sd, na.rm = TRUE), .groups = "drop")
   }
 }
 
+
+# -----------------------------------------------------------------------------
+# Plot replicate-level bias distributions.
+#
+# Inputs:
+#   df   : long-format simulation estimates
+#   file : output PDF file name
+#
+# Output:
+#   saves a faceted bias boxplot and invisibly returns the ggplot object
+# -----------------------------------------------------------------------------
 plot_bias <- function(df, file) {
   p <- ggplot(make_bias_df(df), aes(x = factor(time), y = Bias, fill = Method)) +
     geom_boxplot(lwd = 0.3, outlier.size = 0.6, color = "gray50") +
     scale_fill_manual(values = plot_colors) +
     geom_hline(yintercept = 0, col = "hotpink2", lty = 2, linewidth = 0.6) +
     facet_grid(Treatment ~ Case) + labs(x = "Time (day)", y = "Bias") + theme_bw()
+  
+  # Save the plot as a PDF used in the Online Supplemental Material.
   pdf(file = file, width = 9, height = 4); print(p); dev.off(); invisible(p)
 }
 
+
+# -----------------------------------------------------------------------------
+# Plot heatmaps for one simulation performance metric.
+#
+# Inputs:
+#   df     : long-format simulation estimates
+#   metric : "relbias", "rrmse", "cp", or "ciw"
+#   file   : output PDF file name
+#
+# Output:
+#   saves the heatmap as a PDF and invisibly returns the ggplot object
+# -----------------------------------------------------------------------------
 plot_heatmap <- function(df, metric, file) {
+  
+  # Compute the requested summary metric before plotting.
   d <- make_summary_df(df, metric)
+  
+  # Define metric-specific color scales.
   if (metric == "relbias") {
     fill <- scale_fill_gradientn(colors = c("white", "white", "green4"), values = scales::rescale(c(0, 0.05, 1)), name = "ARBias%")
     legend_lab <- NULL
@@ -124,16 +259,34 @@ plot_heatmap <- function(df, metric, file) {
     fill <- scale_fill_gradientn(colors = c("white", "slateblue2"), name = "CI width")
     legend_lab <- NULL
   }
+  
+  # Plot metric values by estimator, time, treatment, and simulation scenario.
   p <- ggplot(d, aes(x = factor(time), y = Method, fill = Value)) +
     geom_tile(color = "white") + geom_text(aes(label = round(Value, ifelse(metric == "cp", 1, 2))), size = 3, color = "black") +
     fill + facet_grid(Treatment ~ Case) + labs(x = "Time (day)", y = legend_lab) +
     theme_minimal(base_size = 12) + theme(panel.grid = element_blank())
+  
+  # Save the plot as a PDF used in the Online Supplemental Material.
   pdf(file = file, width = ifelse(metric == "relbias", 9.5, 8.5), height = 4.5); print(p); dev.off(); invisible(p)
 }
 
+# -----------------------------------------------------------------------------
+# Generate the complete set of simulation figures for one setting.
+#
+# Inputs:
+#   suffix : input-result suffix ("s", "l", "l2", or "limO")
+#   tag    : suffix used in the output figure file names
+#
+# Output:
+#   five PDF files: bias, relative bias, relative MSE, coverage, and CI width
+# -----------------------------------------------------------------------------
 run_one_setting <- function(suffix, tag) {
   message("Generating figures for setting: ", suffix)
+  
+  # Load and organize all simulation results for the selected setting.
   df <- make_suffix_df(suffix, M)
+  
+  # Generate the bias and performance-summary figures.
   plot_bias(df, paste0("bias_", tag, ".pdf"))
   plot_heatmap(df, "relbias", paste0("relbias_", tag, ".pdf"))
   plot_heatmap(df, "rrmse", paste0("rrmse_", tag, ".pdf"))
@@ -155,6 +308,8 @@ run_one_setting <- function(suffix, tag) {
 ### E.12: relbias_limO.pdf + rrmse_limO.pdf
 ### E.13: cp_limO.pdf + ciw_limO.pdf
 
+# Generate figures for the three source-site sample sizes in the main setting
+# and for the additional limited-overlap setting.
 run_one_setting("s", "s")       # n_k = 300, main setting
 run_one_setting("l", "l")       # n_k = 600, main setting
 run_one_setting("l2", "l2")     # n_k = 1000, main setting
