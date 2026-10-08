@@ -18,6 +18,7 @@ Two required packages should be installed from GitHub:
 ```r
 devtools::install_github("tedwestling/CFsurvival")
 devtools::install_github("tedwestling/survSuperLearner")
+devtools::install_github("elong0527/smim")
 ```
 
 The main required packages were extracted from the reproducibility scripts, including the AMP analysis scripts and simulation scripts.
