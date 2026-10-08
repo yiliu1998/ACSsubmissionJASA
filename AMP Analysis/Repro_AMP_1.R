@@ -2,7 +2,7 @@
 ### Reproducibility for AMP Data Analysis: Part I
 ### --- This script reproduces Table 1--3 in the main text,
 ### --- Figures 1 and 5 in the main text, and Figures A.1--A.3 and
-### --- Tables A.1--A.6 in Online Supplemental Material Appendix A.
+### --- Tables A.1-A.6, A.8 and A.9 in Online Supplemental Material Appendix A.
 ### ----------------------------------------------------------------------------
 
 ### --- Packages and data pre-processing
@@ -19,6 +19,7 @@ library(xtable)
 library(survival)
 library(survminer)
 library(EValue)
+library(smim) # downloaded from https://github.com/elong0527/smim
 
 ### Read the AMP trials dataset and construct the analysis variables.
 dat <- read.csv("amp_survival.csv")
@@ -28,14 +29,14 @@ A <- as.numeric(dat$rx_pool == "T1+T2")
 X <- data.frame(
   bweight = dat$bweight,
   score   = dat$standardized_risk_score,
-  age     = dat$bbmi
+  age     = dat$age,
+  bbmi    = dat$bbmi
 )
 site <- dat$country
 site[site%in%c("Tanzania, Mozambique, Kenya", "Zimbabwe", "Botswana", "Malawi")] <- "African country other than South Africa"
 site[site%in%c("Peru", "Brazil")] <- "Brazil or Peru"
 site[site%in%c("United States", "Switzerland")] <- "United States or Switzerland"
 site <- factor(site, levels=c("South Africa", "African country other than South Africa", "Brazil or Peru", "United States or Switzerland"))
-unique(site)
 dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
 
 ### ----------------------------------------------------------------------------
@@ -58,23 +59,27 @@ make_amp_table1 <- function(dat.hiv) {
       n=n(), age.mean=mean(age), age.sd=sd(age),
       bweight.mean=mean(bweight), bweight.sd=sd(bweight),
       score.mean=mean(score), score.sd=sd(score),
+      bbmi.mean=mean(bbmi), bbmi.sd=sd(bbmi),
       event.count=sum(Delta), event.rate=mean(Delta)
     )
     bysite <- dat.a %>% group_by(site) %>% summarize(
-      n=n(), age.mean=mean(age), age.sd=sd(age),
+      n=n(), 
+      age.mean=mean(age), age.sd=sd(age),
       bweight.mean=mean(bweight), bweight.sd=sd(bweight),
       score.mean=mean(score), score.sd=sd(score),
+      bbmi.mean=mean(bbmi), bbmi.sd=sd(bbmi),
       event.count=sum(Delta), event.rate=mean(Delta), .groups="drop"
     )
     
     vals <- c("Total", unname(site_labels[site_levels]))
-    out <- data.frame(Variable=c("Age (years)", "Weight (kg)", "ML risk score", "HIV-1 diagnosis"), check.names=FALSE)
+    out <- data.frame(Variable=c("Age (years)", "Weight (kg)", "ML risk score", "Baseline BMI", "HIV-1 diagnosis"), check.names=FALSE)
     for (j in seq_along(vals)) out[[vals[j]]] <- NA_character_
     
     fill_col <- function(col, x) {
       out[out$Variable=="Age (years)", col] <<- fmt_mean_sd(x$age.mean, x$age.sd, 2)
       out[out$Variable=="Weight (kg)", col] <<- fmt_mean_sd(x$bweight.mean, x$bweight.sd, 2)
       out[out$Variable=="ML risk score", col] <<- fmt_mean_sd(x$score.mean, x$score.sd, 2)
+      out[out$Variable=="Baseline BMI", col] <<- fmt_mean_sd(x$bbmi.mean, x$bbmi.sd, 2)
       out[out$Variable=="HIV-1 diagnosis", col] <<- fmt_count_pct(x$event.count, x$event.rate, 2)
     }
     
@@ -98,61 +103,163 @@ make_amp_table1 <- function(dat.hiv) {
 make_amp_table1(dat.hiv)
 
 ### ----------------------------------------------------------------------------
-### Reproducibility 2: Sensitivity analysis for censoring in Section 5.1
+### Reproducibility 2: Sensitivity analyses for potentially informative censoring
 ### ----------------------------------------------------------------------------
 
-### Compute the E-value reported in Section 5.1.
-### Calibrate the E-value by examining associations of standardized observed
-### covariates with the HIV-1 outcome and with censoring.
-model <- coxph(Surv(Y, Delta)~A+age+score+bweight, data=dat.hiv)
-summary_fit <- summary(model)$conf.int
-HR <- as.numeric(summary_fit["A", "exp(coef)"])
-lo_CI <- as.numeric(summary_fit["A", "lower .95"])
-hi_CI <- as.numeric(summary_fit["A", "upper .95"])
-evalues.RR(est = HR, lo = lo_CI, hi = hi_CI, true=1)[2,1] # E-value reported in Section 5.1
+### --- Selection-bias E-value of Smith and VanderWeele (2019)
+### Fit the adjusted Cox model used to summarize the treatment effect.
+fit.evalue <- coxph(Surv(Y, Delta) ~ A + age + score + bweight + bbmi + site, data=dat.hiv)
+fit.ci <- summary(fit.evalue)$conf.int
+hr_est <- as.numeric(fit.ci["A", "exp(coef)"])
+lo_CI <- as.numeric(fit.ci["A", "lower .95"])
+hi_CI <- as.numeric(fit.ci["A", "upper .95"])
 
-dat.cal <- dat.hiv %>%
-  mutate(
-    age_z = as.numeric(scale(age)),
-    score_z = as.numeric(scale(score)),
-    bweight_z = as.numeric(scale(bweight)),
-    censor_event = 1 - Delta
-  )
+### HIV-1 incidence is considered rare when cumulative incidence is below 15%.
+km_all <- survfit(Surv(Y, Delta) ~ 1, data=dat.hiv)
+event_risk_end <- 1-tail(km_all$surv, 1)
+rare_outcome <- event_risk_end < 0.15
 
-## 1) Association of observed covariates with outcome
-fit.outcome <- coxph(
-  Surv(Y, Delta) ~ age_z + score_z + bweight_z,
-  data = dat.cal
-)
-summary(fit.outcome)
-
-## 2) Association of observed covariates with censoring
-## Treat censoring as the event
-fit.censor <- coxph(
-  Surv(Y, censor_event) ~ age_z + score_z + bweight_z,
-  data = dat.cal
-)
-
-summary(fit.censor)
-
-### Extract hazard ratios and 95% confidence intervals from a Cox model.
-get_hr_table <- function(fit, model_name) {
-  s <- summary(fit)
-  out <- data.frame(
-    Variable = rownames(s$conf.int),
-    HR = s$conf.int[, "exp(coef)"],
-    Lower = s$conf.int[, "lower .95"],
-    Upper = s$conf.int[, "upper .95"],
-    Model = model_name,
-    row.names = NULL
-  )
-  out
+### Convert a hazard ratio to the risk-ratio scale used by the selection-bias bound.
+hr_to_rr <- function(hr, rare=TRUE) {
+  if(rare) hr else (1-0.5^sqrt(hr))/(1-0.5^sqrt(1/hr))
 }
 
-tab.outcome <- get_hr_table(fit.outcome, "Outcome")
-tab.censor  <- get_hr_table(fit.censor, "Censoring")
-tab.calib <- rbind(tab.outcome, tab.censor)
-print(tab.calib)
+### General selection-bias E-value for inference to the full target population.
+### This corresponds to Smith and VanderWeele (2019), Result 1B, with no
+### directionality assumptions. The four sensitivity parameters are
+### RR_UY|A=0, RR_UY|A=1, RR_SU|A=0, and RR_SU|A=1.
+selection_evalue <- function(rr) {
+  r <- ifelse(rr < 1, 1/rr, rr)
+  z <- sqrt(r)
+  z + sqrt(z*(z-1))
+}
+
+rr_est <- hr_to_rr(hr_est, rare_outcome)
+rr_lo <- hr_to_rr(lo_CI, rare_outcome)
+rr_hi <- hr_to_rr(hi_CI, rare_outcome)
+
+selection_E_point <- selection_evalue(rr_est)
+selection_E_CI <- if(rr_lo <= 1 && rr_hi >= 1) 1 else selection_evalue(ifelse(rr_est < 1, rr_hi, rr_lo))
+
+evalue_results <- data.frame(HR=hr_est, Lower=lo_CI, Upper=hi_CI, HIV_risk=event_risk_end,
+                             E_value=selection_E_point, E_value_CI=selection_E_CI)
+
+
+### --- Descriptive benchmarking using measured baseline covariates
+### Models adjust for study region. These associations provide empirical context
+### only and are not estimates of the Smith--VanderWeele sensitivity parameters.
+dat.cal <- dat.hiv %>%
+  mutate(age_z=as.numeric(scale(age)), score_z=as.numeric(scale(score)),
+         bweight_z=as.numeric(scale(bweight)), bbmi_z=as.numeric(scale(bbmi)),
+         censor_event=1-Delta)
+
+fit.outcome <- coxph(Surv(Y, Delta) ~ age_z + score_z + bweight_z + bbmi_z + site, data=dat.cal)
+fit.censor <- coxph(Surv(Y, censor_event) ~ age_z + score_z + bweight_z + bbmi_z + site, data=dat.cal)
+
+get_hr_table <- function(fit, model) {
+  s <- summary(fit)$conf.int
+  out <- data.frame(Variable=rownames(s), HR=s[, "exp(coef)"], Lower=s[, "lower .95"],
+                    Upper=s[, "upper .95"], Model=model, row.names=NULL)
+  out[out$Variable %in% c("age_z", "score_z", "bweight_z", "bbmi_z"), ]
+}
+
+tab.calib <- rbind(
+  get_hr_table(fit.outcome, "HIV-1 outcome"),
+  get_hr_table(fit.censor, "Censoring")
+)
+
+
+### --- Delta-adjusted SMIM sensitivity analysis (Yang et al.; 2023, Biometrics)
+### delta = 1 corresponds to the MAR benchmark. For premature censoring,
+### delta > 1 assumes a higher post-censoring HIV hazard than under MAR,
+### whereas delta < 1 assumes a lower post-censoring hazard.
+
+### This part could take 2-3 hours; change n_mi and n_b to 5 and 10 for a quick check.
+tau <- 601
+n_mi <- 50
+n_b <- 500
+seed <- 12345
+eps_time <- 0.5
+
+### pattern = 1: observed HIV event by tau
+### pattern = 2: observed event-free through tau
+### pattern = 3: censored before tau and allowed to be potentially informative
+### The 52 participants recorded as censored at day 0 are assigned time 0.5
+### solely because SMIM requires strictly positive survival times.
+dat.smim <- dat.hiv %>%
+  mutate(time_tau=pmin(Y, tau),
+         status_tau=as.integer(Delta == 1 & Y <= tau),
+         pattern=case_when(status_tau == 1 ~ 1L, Y >= tau ~ 2L, TRUE ~ 3L),
+         time_smim=pmax(time_tau, eps_time))
+
+### Include study-region indicators in the imputation model.
+X.smim <- model.matrix(~ age + score + bweight + bbmi + site, data=dat.smim)[,-1,drop=FALSE]
+
+stopifnot(all(dat.smim$time_smim > 0), all(dat.smim$status_tau %in% c(0,1)),
+          all(dat.smim$pattern %in% 1:3), all(dat.smim$A %in% c(0,1)),
+          !anyNA(X.smim), !anyNA(dat.smim$time_smim), !anyNA(dat.smim$status_tau))
+
+### Run one delta-adjusted sensitivity scenario and return the RMST summary.
+run_smim_delta <- function(delta0=1, delta1=1, seed_run=seed) {
+  delta_i <- rep(1, nrow(dat.smim))
+  delta_i[dat.smim$pattern == 3 & dat.smim$A == 0] <- delta0
+  delta_i[dat.smim$pattern == 3 & dat.smim$A == 1] <- delta1
+  
+  fit <- smim::rmst_delta(time=dat.smim$time_smim, status=dat.smim$status_tau, x=X.smim,
+                          group=dat.smim$A, pattern=dat.smim$pattern, delta=delta_i, tau=tau,
+                          n_mi=n_mi, n_b=n_b, seed=seed_run, wild_boot=TRUE)
+  
+  diff_fit <- smim::diff_rmst(fit$rmst)
+  diff_row <- diff_fit[diff_fit[, "group"] == 9,,drop=FALSE]
+  
+  result <- data.frame(RMST_control=fit$rmst[fit$rmst[, "group"] == 0, "rmst"],
+                       RMST_treatment=fit$rmst[fit$rmst[, "group"] == 1, "rmst"],
+                       RMST_difference=diff_row[, "rmst"], SE_Rubin=diff_row[, "sd"],
+                       SE_WildBootstrap=diff_row[, "wb_sd"])
+  
+  result$CI_lower <- result$RMST_difference-1.96*result$SE_WildBootstrap
+  result$CI_upper <- result$RMST_difference+1.96*result$SE_WildBootstrap
+  result$p_value <- 2*pnorm(-abs(result$RMST_difference/result$SE_WildBootstrap))
+  
+  list(summary=result, fit=fit, diff=diff_fit)
+}
+
+### Sensitivity scenarios:
+### The MAR benchmark is included only once to avoid redundant computation.
+scenarios <- data.frame(
+  Scenario=c("MAR benchmark", rep("Common delta",5), rep("Treatment arm adverse",4),
+             rep("Differential adverse",3)),
+  delta0=c(1, 0.50,0.75,1.25,1.50,2.00, 1,1,1,1, 0.90,0.75,0.50),
+  delta1=c(1, 0.50,0.75,1.25,1.50,2.00, 1.25,1.50,2.00,3.00, 1.25,1.50,2.00)
+)
+
+### Use the same Monte Carlo seed across scenarios so differences primarily
+### reflect the delta assumptions rather than different random draws.
+smim_runs <- lapply(seq_len(nrow(scenarios)), function(j) {
+  message("Running SMIM scenario ", j, " of ", nrow(scenarios),
+          ": delta0 = ", scenarios$delta0[j], ", delta1 = ", scenarios$delta1[j])
+  
+  run_smim_delta(delta0=scenarios$delta0[j], delta1=scenarios$delta1[j], seed_run=seed)
+})
+
+all_sensitivity_results <- do.call(rbind, lapply(seq_along(smim_runs), function(j) {
+  cbind(scenarios[j,], smim_runs[[j]]$summary)
+}))
+rownames(all_sensitivity_results) <- NULL
+
+### --- Save and print sensitivity results
+saveRDS(list(E_value=evalue_results, Covariate_benchmark=tab.calib,
+             SMIM_results=all_sensitivity_results, SMIM_fits=smim_runs),
+        file="AMP_censoring_sens_SMIM.rds")
+
+print(evalue_results, row.names=FALSE)
+
+### Table A.8
+print(tab.calib, row.names=FALSE)
+
+### Table A.9
+print(all_sensitivity_results, row.names=FALSE)
+
 
 ### ----------------------------------------------------------------------------
 ### Reproducibility 3: Figure 5 in Section 5.2
@@ -167,18 +274,16 @@ source("EIFestimates.R")
 result.SA <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="South Africa",
                            prop.SL.library=c("SL.glm"),
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           n.folds=5,
-                           s=2388)
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           n.folds=5)
 
 result.SA.naive <- POOL_IVW(data=dat.hiv,
                             tgt.name="South Africa",
                             prop.SL.library=c("SL.glm"),
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            n.folds=5,
-                            s=2388)
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            n.folds=5)
 save(file="result_main_SA.Rdata", result.SA, result.SA.naive)
 
 ### Fit the stratified clustered Cox model used as an additional comparator.
@@ -437,18 +542,16 @@ print(tab.RMST, row.names=FALSE)
 result.OA <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="African country other than South Africa",
                            prop.SL.library=c("SL.glm"),
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           n.folds=5,
-                           s=2222)
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           n.folds=5)
 
 result.OA.naive <- POOL_IVW(data=dat.hiv,
                             tgt.name="South Africa",
                             prop.SL.library=c("SL.glm"),
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            n.folds=5,
-                            s=2388)
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            n.folds=5)
 save(file="result_main_OA.Rdata", result.OA, result.OA.naive)
 
 fit_cluster_cox <- coxph(
@@ -499,18 +602,16 @@ dev.off()
 result.BP <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="Brazil or Peru",
                            prop.SL.library=c("SL.glm"),
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           n.folds=5,
-                           s=2222)
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           n.folds=5)
 
 result.BP.naive <- POOL_IVW(data=dat.hiv,
                             tgt.name="South Africa",
                             prop.SL.library=c("SL.glm"),
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            n.folds=5,
-                            s=2388)
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            n.folds=5)
 save(file="result_main_BP.Rdata", result.BP, result.BP.naive)
 
 dat <- subset(dat.hiv, site == "Brazil or Peru")
@@ -553,18 +654,16 @@ dev.off()
 result.US <- TrtSurvCurves(data=dat.hiv,
                            tgt.name="United States or Switzerland",
                            prop.SL.library=c("SL.glm"),
-                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                           n.folds=5,
-                           s=2222)
+                           event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                           n.folds=5)
 
 result.US.naive <- POOL_IVW(data=dat.hiv,
                             tgt.name="South Africa",
                             prop.SL.library=c("SL.glm"),
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            n.folds=5,
-                            s=2388)
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            n.folds=5)
 save(file="result_main_US.Rdata", result.US, result.US.naive)
 
 dat <- subset(dat.hiv, site == "United States or Switzerland")

@@ -18,6 +18,7 @@ library(survival)
 library(cobalt)
 library(randomForestSRC)
 library(cowplot)
+source("EIFestimates.R")
 
 ### Read the AMP trials dataset and construct the analysis variables.
 dat <- read.csv("amp_survival.csv")
@@ -27,27 +28,18 @@ A <- as.numeric(dat$rx_pool == "T1+T2")
 X <- data.frame(
   bweight = dat$bweight,
   score   = dat$standardized_risk_score,
-  age     = dat$bbmi
+  age     = dat$age,
+  bbmi    = dat$bbmi
 )
 site <- dat$country
 site[site == "South Africa"] <- "SA"
 site[site %in% c("Tanzania, Mozambique, Kenya", "Zimbabwe", "Botswana", "Malawi")] <- "OA"
 site[site %in% c("Peru", "Brazil")] <- "BP"
 site[site %in% c("United States", "Switzerland")] <- "US"
-site <- factor(
-  site,
-  levels = c("SA", "OA", "BP", "US")
-)
-dat.hiv <- data.frame(
-  A = A,
-  Y = Y,
-  Delta = Delta,
-  bweight = X$bweight,
-  score = X$score,
-  age = X$age,
-  site = site
-)
-bal.vars <- c("age", "score", "bweight")
+site <- factor(site, levels = c("SA", "OA", "BP", "US"))
+dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
+
+bal.vars <- c("age", "score", "bweight", "bbmi")
 X.ps <- dat.hiv[, bal.vars, drop = FALSE]
 tgt.name <- "SA"
 site.cols <- c("SA" = "#E41A1C", "OA" = "#377EB8", "BP" = "#4DAF4A", "US" = "#984EA3")
@@ -82,7 +74,7 @@ predict.SL.glm.interaction <- function(object, newdata, ...) {
 ### GLM, interaction GLM, LASSO, or SuperLearner ensemble specifications.
 ### Returns estimated propensity scores and corresponding ATE weights.
 fit_sitewise_ps <- function(dat, method = c("GLM", "GLM.interaction", "LASSO", "Ensemble.All", "Ensemble.GLM"),
-                            bal.vars = c("age", "score", "bweight"), eps = 0.01) {
+                            bal.vars = c("age", "score", "bweight", "bbmi"), eps = 0.01) {
   method <- match.arg(method)
   ps <- rep(NA_real_, nrow(dat))
   wt <- rep(NA_real_, nrow(dat))

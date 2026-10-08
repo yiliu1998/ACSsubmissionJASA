@@ -1,6 +1,6 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for additional SA-target diagnostics
-### --- This script reproduces Tables A.9, A.10, and A.11 in
+### --- This script reproduces Tables A.12, A.13 and A.14 in
 ### --- Online Supplemental Material Appendix A.
 ### ----------------------------------------------------------------------------
 
@@ -15,7 +15,7 @@ src <- c("OA", "BP", "US")
 
 
 ### ----------------------------------------------------------------------------
-### 1. Selected federated weights and chi: Table A.9
+### 1. Selected federated weights and chi: Table A.12
 ### ----------------------------------------------------------------------------
 
 ### Extract the selected FED weights at the reported evaluation days.
@@ -57,7 +57,7 @@ print(tab.chi, row.names=FALSE)
 
 
 ### ----------------------------------------------------------------------------
-### 2. Sensitivity to lambda: Table A.10
+### 2. Sensitivity to lambda: Table A.13
 ### ----------------------------------------------------------------------------
 
 ### Construct the response, source IF contrasts, discrepancy terms, and
@@ -174,7 +174,7 @@ print(round(tab.lambda[,c("Day","Lambda.mult","Est","SE","Lower","Upper",
 
 
 ### ----------------------------------------------------------------------------
-### 3. FED sensitivity excluding BP and US: Table A.11
+### 3. FED sensitivity excluding BP and US: Table A.14
 ### ----------------------------------------------------------------------------
 ### --- Compare the original FED estimator with a version borrowing only from OA
 

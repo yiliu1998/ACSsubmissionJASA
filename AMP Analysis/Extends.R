@@ -140,16 +140,16 @@ FuseSurv_Extend <- function(site,
                       penalty.factor=augdiff.RD[i,]^2,
                       intercept=FALSE,
                       alpha=1,
-                      lambda=cv.fit$lambda.1se,
+                      lambda=cv.fit$lambda.min,
                       lower.limits=0,
                       upper.limits=1))
       if(class(fit0)[1]!="try-error") { 
-        wt.RD[i,]=coef(fit0, s=cv.fit$lambda.1se)[-1] } else { wt.RD[i,]=rep(0, K-1) }
+        wt.RD[i,]=coef(fit0, s=cv.fit$lambda.min)[-1] } else { wt.RD[i,]=rep(0, K-1) }
     } else { wt.RD[i,]=rep(0, K-1) }
   } 
   wt.RD.tgt <- 1-apply(wt.RD,1,sum)
   RD.FED <- apply(augdiff.RD*wt.RD, 1, sum) + RD.TGT
-  all.var <- (apply(IF.TGT.RD,2,var)*(wt.RD.tgt^2+4*wt.RD.tgt*(1-wt.RD.tgt)) + 
+  all.var <- (apply(IF.TGT.RD,2,var)*(wt.RD.tgt^2+2*wt.RD.tgt*(1-wt.RD.tgt)) + 
                 apply(S.01-S.00,2,var)*(1-wt.RD.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var <- all.var + apply(IF.R1[[k]]-IF.R0[[k]], 2, var)*wt.RD[,k]^2 / n.site[k+1]
@@ -185,16 +185,16 @@ FuseSurv_Extend <- function(site,
                       penalty.factor=augdiff.SR[i,]^2,
                       intercept=FALSE,
                       alpha=1,
-                      lambda=cv.fit$lambda.1se,
+                      lambda=cv.fit$lambda.min,
                       lower.limits=0,
                       upper.limits=1))
       if(class(fit0)[1]!="try-error") { 
-        wt.SR[i,]=coef(fit0, s=cv.fit$lambda.1se)[-1] } else { wt.SR[i,]=rep(0, K-1) }
+        wt.SR[i,]=coef(fit0, s=cv.fit$lambda.min)[-1] } else { wt.SR[i,]=rep(0, K-1) }
     } else { wt.SR[i,]=rep(0, K-1) }
   } 
   wt.SR.tgt <- 1-apply(wt.SR,1,sum)
   SR.FED <- apply(augdiff.SR*wt.SR, 1, sum) + SR.TGT
-  all.var <- (apply(IF.TGT.SR,2,var)*(wt.SR.tgt^2+4*wt.SR.tgt*(1-wt.SR.tgt)) + 
+  all.var <- (apply(IF.TGT.SR,2,var)*(wt.SR.tgt^2+2*wt.SR.tgt*(1-wt.SR.tgt)) + 
                 apply(sweep(Aug.R1.mean,1,1/S0_hat,`*`)-sweep(Aug.R0.mean,1,S1_hat/(S0_hat^2),`*`),2,var)*(1-wt.SR.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var <- all.var + apply(IF.R1[[k]]-IF.R0[[k]], 2, var)*wt.SR[,k]^2 / n.site[k+1]
@@ -244,11 +244,11 @@ FuseSurv_Extend <- function(site,
                     penalty.factor=augdiff.RMST.0^2,
                     intercept=FALSE,
                     alpha=1,
-                    lambda=cv.fit0$lambda.1se,
+                    lambda=cv.fit0$lambda.min,
                     lower.limits=0,
                     upper.limits=1))
     if(class(fit0)[1]!="try-error") { 
-      wt.RMST.0=coef(fit0, s=cv.fit0$lambda.1se)[-1] } else { wt.RMST.0=rep(0, K-1) }
+      wt.RMST.0=coef(fit0, s=cv.fit0$lambda.min)[-1] } else { wt.RMST.0=rep(0, K-1) }
   } else { wt.RMST.0=rep(0, K-1) }
   
   cv.fit1=try(cv.glmnet(x=IF.RMST.1.diff, y=IF.TGT.RMST.1.center))
@@ -257,11 +257,11 @@ FuseSurv_Extend <- function(site,
                     penalty.factor=augdiff.RMST.1^2,
                     intercept=FALSE,
                     alpha=1,
-                    lambda=cv.fit1$lambda.1se,
+                    lambda=cv.fit1$lambda.min,
                     lower.limits=0,
                     upper.limits=1))
     if(class(fit1)[1]!="try-error") { 
-      wt.RMST.1=coef(fit1, s=cv.fit1$lambda.1se)[-1] } else { wt.RMST.1=rep(0, K-1) }
+      wt.RMST.1=coef(fit1, s=cv.fit1$lambda.min)[-1] } else { wt.RMST.1=rep(0, K-1) }
   } else { wt.RMST.1=rep(0, K-1) }
   
   cv.fit=try(cv.glmnet(x=IF.RMST.diff, y=IF.TGT.RMST.center))
@@ -270,11 +270,11 @@ FuseSurv_Extend <- function(site,
                    penalty.factor=augdiff.RMST^2,
                    intercept=FALSE,
                    alpha=1,
-                   lambda=cv.fit$lambda.1se,
+                   lambda=cv.fit$lambda.min,
                    lower.limits=0,
                    upper.limits=1))
     if(class(fit)[1]!="try-error") { 
-      wt.RMST=coef(fit, s=cv.fit$lambda.1se)[-1] } else { wt.RMST=rep(0, K-1) }
+      wt.RMST=coef(fit, s=cv.fit$lambda.min)[-1] } else { wt.RMST=rep(0, K-1) }
   } else { wt.RMST=rep(0, K-1) }
   
   wt.RMST.0.tgt <- 1-sum(wt.RMST.0)
@@ -285,11 +285,11 @@ FuseSurv_Extend <- function(site,
   RMST.1.FED <- sum(augdiff.RMST.1*wt.RMST.1) + RMST.1.TGT
   RMST.diff.FED <- sum(augdiff.RMST*wt.RMST) + RMST.diff.TGT
   
-  all.var0 <- (var(IF.TGT.RMST.0)*(wt.RMST.0.tgt^2+4*wt.RMST.0.tgt*(1-wt.RMST.0.tgt)) +
+  all.var0 <- (var(IF.TGT.RMST.0)*(wt.RMST.0.tgt^2+2*wt.RMST.0.tgt*(1-wt.RMST.0.tgt)) +
                  var(S.00%*%dt)*(1-wt.RMST.0.tgt)^2) / n.site[1] 
-  all.var1 <- (var(IF.TGT.RMST.1)*(wt.RMST.1.tgt^2+4*wt.RMST.1.tgt*(1-wt.RMST.1.tgt)) +
+  all.var1 <- (var(IF.TGT.RMST.1)*(wt.RMST.1.tgt^2+2*wt.RMST.1.tgt*(1-wt.RMST.1.tgt)) +
                  var(S.01%*%dt)*(1-wt.RMST.1.tgt)^2) / n.site[1] 
-  all.var <- (var(IF.TGT.RMST.diff)*(wt.RMST.tgt^2+4*wt.RMST.tgt*(1-wt.RMST.tgt)) +
+  all.var <- (var(IF.TGT.RMST.diff)*(wt.RMST.tgt^2+2*wt.RMST.tgt*(1-wt.RMST.tgt)) +
                 var((S.01-S.00)%*%dt)*(1-wt.RMST.tgt)^2) / n.site[1] 
   for(k in 1:(K-1)) {
     all.var0 <- all.var0 + var(IF.R0[[k]]%*%dt)*wt.RMST.0[k]^2 / n.site[k+1]

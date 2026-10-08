@@ -17,7 +17,7 @@
 #   influence-function, augmentation, and survival-prediction quantities
 # ------------------------------------------------------------
 TrtSurvCurves <- function(data, 
-                          covar.name=c("age","score","bweight"), 
+                          covar.name=c("age","score","bweight","bbmi"), 
                           site.var="site",
                           tgt.name="South Africa",
                           trt.name="A", 
@@ -26,10 +26,10 @@ TrtSurvCurves <- function(data,
                           fit.times=1:601, 
                           eval.times=1:601,
                           prop.SL.library=c("SL.glm"), 
-                          event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
-                          cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
-                          n.folds=2, 
-                          s=1333) {
+                          event.SL.library=c("survSL.km", "survSL.coxph"),
+                          cens.SL.library=c("survSL.km", "survSL.coxph"),
+                          n.folds=5, 
+                          s=2388) {
   
   site <- as.character(data[, site.var])
   tgt.name <- as.character(tgt.name)
@@ -291,11 +291,11 @@ TrtSurvCurves <- function(data,
                       penalty.factor=chi0[i,]^2,
                       intercept=FALSE,
                       alpha=1,
-                      lambda=cvfit0$lambda.1se,
+                      lambda=cvfit0$lambda.min,
                       lower.limits=0,
                       upper.limits=1))
       if(class(fit0)[1]!="try-error") { 
-        wt0[i,]=coef(fit0, s=cvfit0$lambda.1se)[-1] } else { wt0[i,]=rep(0, K-1) }
+        wt0[i,]=coef(fit0, s=cvfit0$lambda.min)[-1] } else { wt0[i,]=rep(0, K-1) }
     } else { wt0[i,]=rep(0, K-1) }
     
     cvfit1=try(cv.glmnet(x=IF1.diff, y=IF1.tgt))
@@ -304,11 +304,11 @@ TrtSurvCurves <- function(data,
                       penalty.factor=chi1[i,]^2,
                       intercept=FALSE,
                       alpha=1,
-                      lambda=cvfit1$lambda.1se,
+                      lambda=cvfit1$lambda.min,
                       lower.limits=0,
                       upper.limits=1))
       if(class(fit1)[1]!="try-error") { 
-        wt1[i,]=coef(fit1, s=cvfit1$lambda.1se)[-1] } else { wt1[i,]=rep(0, K-1) }
+        wt1[i,]=coef(fit1, s=cvfit1$lambda.min)[-1] } else { wt1[i,]=rep(0, K-1) }
     } else { wt1[i,]=rep(0, K-1) }
   } 
   wt0.tgt <- 1-apply(wt0,1,sum)
@@ -446,8 +446,8 @@ POOL_IVW <- function(data,
                      trt.name="A", 
                      time.var="Y", 
                      event="Delta", 
-                     fit.times=1:601, 
-                     eval.times=1:601,
+                     fit.times=1:600, 
+                     eval.times=1:600,
                      prop.SL.library=c("SL.glm"), 
                      event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
                      cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),

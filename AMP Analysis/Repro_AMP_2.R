@@ -1,6 +1,6 @@
 ### ----------------------------------------------------------------------------
 ### Reproducibility for AMP Data Analysis: Part II
-### --- This script reproduces Figure A.4 and Tables A.7--A.8 in
+### --- This script reproduces Figure A.4 and Tables A.10 and A.11 in
 ### --- Online Supplemental Material Appendix A.
 ### ----------------------------------------------------------------------------
 
@@ -27,14 +27,14 @@ A <- as.numeric(dat$rx_pool == "T1+T2")
 X <- data.frame(
   bweight = dat$bweight,
   score   = dat$standardized_risk_score,
-  age     = dat$bbmi
+  age     = dat$age,
+  bbmi    = dat$bbmi
 )
 site <- dat$country
 site[site%in%c("Tanzania, Mozambique, Kenya", "Zimbabwe", "Botswana", "Malawi")] <- "African country other than South Africa"
 site[site%in%c("Peru", "Brazil")] <- "Brazil or Peru"
 site[site%in%c("United States", "Switzerland")] <- "United States or Switzerland"
 site <- factor(site, levels=c("South Africa", "African country other than South Africa", "Brazil or Peru", "United States or Switzerland"))
-unique(site)
 dat.hiv <- data.frame(cbind(A, Y, Delta, X, site))
 
 ### ----------------------------------------------------------------------------
@@ -76,8 +76,8 @@ plot_survival_CI <- function(
 
 ### Plot the estimated federated weights over time for each analytical region.
 plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) {
-  df1 <- results.list$weights[,1:4] %>% as.data.frame()
-  df0 <- results.list$weights[,5:8] %>% as.data.frame()
+  df0 <- results.list$weights[,1:4] %>% as.data.frame()
+  df1 <- results.list$weights[,5:8] %>% as.data.frame()
   df1$time <- seq_len(nrow(df1)) 
   df0$time <- seq_len(nrow(df0))
   colnames(df1) <- colnames(df0) <- c(site.names, "time")
@@ -117,19 +117,17 @@ plot_fedweights <- function(results.list, site.names=c("SA", "OA", "BP", "US")) 
 ### Refit the SA-target analysis excluding the ML risk score from the covariate set
 ### as a sensitivity analysis.
 result.SA <- TrtSurvCurves(data=dat.hiv,
-                           covar.name=c("age","bweight"),
+                           covar.name=c("age","bweight","bbmi"),
                            tgt.name="South Africa",
-                           n.folds=5,
-                           s=2388)
+                           n.folds=5)
 
 result.SA.naive <- POOL_IVW(data=dat.hiv,
-                            covar.name=c("age","bweight"),
+                            covar.name=c("age","bweight","bbmi"),
                             tgt.name="South Africa",
                             prop.SL.library=c("SL.glm"),
-                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.gam"),
-                            n.folds=5,
-                            s=2388)
+                            event.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            cens.SL.library=c("survSL.km", "survSL.coxph", "survSL.rfsrc"),
+                            n.folds=5)
 save(file="result_main_SA_2.Rdata", result.SA, result.SA.naive)
 
 ### Fit the corresponding stratified clustered Cox comparator using the same reduced covariate set.
@@ -178,7 +176,7 @@ grid.arrange(p.wt.SA1, p.wt.SA0, ncol=2)
 dev.off()
 
 ### ----------------------------------------------------------------------------
-### Reproducibility 2: Tables A.7 and A.8 in Supplement A
+### Reproducibility 2: Tables A.10 and A.11 in Supplement A
 ### ----------------------------------------------------------------------------
 ### Compute survival difference, survival ratio, and RMST contrasts
 ### for the reduced-covariate sensitivity analysis.
@@ -268,13 +266,13 @@ make_rd_sr_rows <- function(rd.list, sr.list, time.sel=c(148,330,512)) {
   }))
 }
 
-tab.A1 <- make_rd_sr_rows(
+tab.A10 <- make_rd_sr_rows(
   rd.list = list(TGT=df.RD.TGT, FED=df.RD.FED, CCOD=df.RD.CCOD),
   sr.list = list(TGT=df.SR.TGT, FED=df.SR.FED, CCOD=df.SR.CCOD),
   time.sel = time.sel
 )
 
-### Format arm-specific RMST and RMST-difference results for Table A.8.
+### Format arm-specific RMST and RMST-difference results for Table A.11. 
 make_rmst_rows <- function(df0.list, df1.list, dfdiff.list) {
   methods <- c("TGT", "FED", "CCOD")
   bind_block <- function(label, dfs, show_p=FALSE) {
@@ -297,14 +295,14 @@ make_rmst_rows <- function(df0.list, df1.list, dfdiff.list) {
   )
 }
 
-tab.A2 <- make_rmst_rows(
+tab.A11 <- make_rmst_rows(
   df0.list = list(TGT=extend.results$df.RMST.0.TGT, FED=extend.results$df.RMST.0.FED, CCOD=extend.results$df.RMST.0.CCOD),
   df1.list = list(TGT=extend.results$df.RMST.1.TGT, FED=extend.results$df.RMST.1.FED, CCOD=extend.results$df.RMST.1.CCOD),
   dfdiff.list = list(TGT=extend.results$df.RMST.diff.TGT, FED=extend.results$df.RMST.diff.FED, CCOD=extend.results$df.RMST.diff.CCOD)
 )
 
-### --- Print Table A.7
-print(tab.A1, row.names = FALSE)
+### --- Print Table A.10
+print(tab.A10, row.names = FALSE)
 
-### --- Print Table A.8
-print(tab.A2, row.names = FALSE)
+### --- Print Table A.11
+print(tab.A11, row.names = FALSE)
