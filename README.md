@@ -51,7 +51,7 @@ This script reproduces the primary data analysis in the manuscript, including:
 * **Figure 5** (estimated survival curves for South Africa region and federated weights) in Section 5;
 * **Tables 2 and 3** (RD, SR and RMST analyses for South Africa) in Section 5;
 * **Figures A.1–A.3** in Web Appendix A.
-* **Tables A.1–A.6** in Web Appendix A. 
+* **Tables A.1–A.6, A.8 and A.9** in Web Appendix A. 
   
 Intermediate analysis results are automatically saved as `.Rdata` files (e.g., `result_main_SA.Rdata`) for subsequent analyses.
 
@@ -60,7 +60,7 @@ Intermediate analysis results are automatically saved as `.Rdata` files (e.g., `
 This script reproduces the supplementary analyses under the reduced adjustment model, including:
 
 * **Figure A.4** in Web Appendix A;
-* **Tables A.7 and A.8** in Web Appendix A.
+* **Tables A.10 and A.11** in Web Appendix A.
 
 This script generates and saves `result_main_SA_2.Rdata`, which is subsequently used to produce the supplementary tables.
 
@@ -72,10 +72,13 @@ This script reproduces:
 * **Figure 4** (nuisance function diagnostics) in Section 5.
 
 ### Part IV (`Repro_AMP_4.R`)
+
 This script reproduces the additional SA-target federated diagnostics and sensitivity analyses reported in Web Appendix A, including:
+
 * **Table A.9** (selected federated weights and estimated source-target discrepancy terms);
-* **Table A.10** (sensitivity of the FED estimator to the tuning parameter $\lambda$);
-* **Table A.11** (sensitivity analysis excluding BP and US from federated borrowing).
+* **Table A.12** (sensitivity of the FED estimator to the tuning parameter $\lambda$);
+* **Table A.13** (sensitivity analysis excluding BP and US from federated borrowing).
+
 The script uses the previously saved `result_main_SA.Rdata` file from **Part I** and therefore does not require refitting the full AMP analysis.
 
 ## Simulation Study Results (Web Appendix E)
